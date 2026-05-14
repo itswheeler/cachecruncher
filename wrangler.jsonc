@@ -10,5 +10,9 @@
     "directory": "public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
-  }
+  },
+  "routes": [
+    { "pattern": "cachecruncher.com", "custom_domain": true },
+    { "pattern": "www.cachecruncher.com", "custom_domain": true }
+  ]
 }

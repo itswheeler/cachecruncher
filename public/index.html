@@ -3,17 +3,109 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cache Calc — Cache, Memory & Virtual Memory Bits Calculator</title>
-  <meta name="description" content="A free interactive calculator for computer architecture students: cache configuration, memory addressing, virtual memory pages, page tables, and TLB bits." />
+  <title>Cache Cruncher — Cache, Memory & Virtual Memory Bits Calculator</title>
+  <meta name="description" content="Free online cache and memory bits calculator for computer architecture students. Solve cache size, blocks, sets, index/tag/offset bits, page tables, TLB tag bits, and virtual memory — all values auto-fill as you type." />
+  <meta name="keywords" content="cache calculator, cache bits calculator, computer architecture calculator, index bits, tag bits, offset bits, TLB calculator, page table calculator, virtual memory calculator, set associative cache, direct mapped cache, memory addressing" />
+  <meta name="author" content="Cache Cruncher" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+  <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)" />
+  <link rel="canonical" href="https://cachecruncher.com/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Cache Cruncher" />
+  <meta property="og:title" content="Cache Cruncher — Cache, Memory & Virtual Memory Bits Calculator" />
+  <meta property="og:description" content="Free online cache and memory bits calculator. Auto-fills index/tag/offset bits, page tables, TLB tag, and more as you type." />
+  <meta property="og:url" content="https://cachecruncher.com/" />
+  <meta property="og:image" content="https://cachecruncher.com/og-image.svg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Cache Cruncher — Cache & Memory Bits Calculator" />
+  <meta name="twitter:description" content="Free interactive calculator for cache, memory, page tables, and TLB bits. Built for computer architecture students." />
+  <meta name="twitter:image" content="https://cachecruncher.com/og-image.svg" />
+
   <link rel="stylesheet" href="/styles.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>" />
+
+  <!-- Structured data: WebApplication + FAQ for rich results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "name": "Cache Cruncher",
+        "url": "https://cachecruncher.com/",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any (web browser)",
+        "browserRequirements": "Requires JavaScript",
+        "description": "Interactive calculator for cache configuration, memory addressing, virtual memory pages, page tables, and TLB bits. Designed for computer architecture students.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "isAccessibleForFree": true,
+        "audience": { "@type": "EducationalAudience", "educationalRole": "student" },
+        "featureList": [
+          "Cache size, block, set, and associativity calculator",
+          "Index, tag, and offset bit derivation",
+          "Tag and valid-bit overhead computation",
+          "Virtual and physical page calculator",
+          "Page table size estimator",
+          "TLB tag and index bits",
+          "Bidirectional auto-fill — type either side of an equation"
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do you calculate cache index bits?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Index bits = log2(number of sets). Number of sets = cache size / (block size × associativity). Cache Cruncher computes this automatically as you type."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do you calculate cache tag bits?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Tag bits = address size − (index bits + offset bits), where offset bits = log2(block size in bytes)."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do you calculate TLB tag bits?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "TLB tag bits = virtual page number bits − log2(TLB rows). VPN bits = virtual address size − page offset bits."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Cache Cruncher free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Cache Cruncher is a free, open-source web app that runs entirely in your browser. No account, no tracking, no server-side calculation."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
       <span class="logo" aria-hidden="true">🧮</span>
       <div>
-        <h1>Cache Calc</h1>
+        <h1>Cache Cruncher</h1>
         <p class="tagline">Cache · Memory · Virtual Memory bit calculator</p>
       </div>
     </div>
@@ -189,10 +281,65 @@
         <li><code>tlb_tag = VPN_bits − tlb_index</code></li>
       </ul>
     </details>
+
+    <article class="seo-content">
+      <h2>About the Cache Cruncher calculator</h2>
+      <p>
+        Cache Cruncher is a free online <strong>cache and memory bits calculator</strong>
+        designed for students taking computer architecture or computer organization
+        courses. Type any combination of values you already know — cache size,
+        block size, associativity, address width, page size, TLB rows — and every
+        derived field fills in automatically. Because the solver is bidirectional,
+        you can drive it from <em>either</em> side of an equation: edit
+        <code>num_blocks</code> and <code>cache_size</code> recomputes; edit
+        <code>cache_size</code> and <code>num_blocks</code> recomputes.
+      </p>
+
+      <h3>What can you calculate?</h3>
+      <ul>
+        <li><strong>Cache configuration:</strong> number of blocks, number of sets,
+          index bits, offset bits, tag bits, tag-array storage, valid-bit overhead,
+          and total cache overhead.</li>
+        <li><strong>Memory addressing:</strong> physical and virtual address space,
+          addressable memory, and the relationship between bits and bytes.</li>
+        <li><strong>Virtual memory:</strong> page size, page offset bits, virtual
+          page number bits, virtual and physical page counts, and full
+          page-table size estimation including protection bits.</li>
+        <li><strong>TLB:</strong> TLB index bits and TLB tag bits from VPN width
+          and the number of TLB rows.</li>
+      </ul>
+
+      <h3>Example: a 32 KB, 4-way set-associative cache with 64-byte blocks</h3>
+      <p>
+        Enter <code>cache_size = 32 KB</code>, <code>block_size = 64</code>,
+        <code>associativity = 4</code>, and <code>address_size = 32</code>.
+        Cache Cruncher derives 512 blocks, 128 sets, 7 index bits,
+        6 offset bits, and 19 tag bits — instantly, with no submit button.
+      </p>
+
+      <h3>Frequently asked questions</h3>
+      <h4>How do I calculate index bits in a cache?</h4>
+      <p>Index bits = log₂(number of sets). Number of sets equals the cache size
+        divided by (block size × associativity). For a direct-mapped cache,
+        associativity is 1.</p>
+
+      <h4>How do I calculate tag bits?</h4>
+      <p>Tag bits = address size − (index bits + offset bits). Offset bits =
+        log₂(block size in bytes).</p>
+
+      <h4>How do I calculate TLB tag bits?</h4>
+      <p>TLB tag bits = virtual page number bits − log₂(TLB rows), where VPN
+        bits = virtual address size − page offset bits.</p>
+
+      <h4>Is my data sent anywhere?</h4>
+      <p>No. Cache Cruncher runs entirely in your browser. There is no backend,
+        no analytics, and no tracking. The Cloudflare Worker only serves the
+        static HTML, CSS, and JavaScript.</p>
+    </article>
   </main>
 
   <footer class="foot">
-    <p>Built for computer architecture students · runs entirely in your browser · open source on <a href="#" id="repoLink" rel="noopener">GitHub</a></p>
+    <p>cachecruncher.com · built for computer architecture students · runs entirely in your browser</p>
   </footer>
 
   <script src="/app.js"></script>

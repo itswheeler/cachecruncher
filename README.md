@@ -1,8 +1,8 @@
-# Cache Calc
+# Cache Cruncher
 
 A modern, browser-based **cache, memory, and virtual-memory bits calculator** for computer-architecture students. Originally a Python/Flask app from a college course — rebuilt as a static Cloudflare Worker so it loads instantly and runs entirely in your browser.
 
-**Live demo:** _(deploy to fill in)_
+**Live:** <https://cachecruncher.com>
 
 ## Features
 
