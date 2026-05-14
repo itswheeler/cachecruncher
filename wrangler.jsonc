@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "cache-calc",
+  "name": "cachecruncher",
   "main": "src/worker.js",
   "compatibility_date": "2026-04-03",
   "observability": {
