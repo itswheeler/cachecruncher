@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cache Calc — Cache, Memory & Virtual Memory Bits Calculator</title>
+  <meta name="description" content="A free interactive calculator for computer architecture students: cache configuration, memory addressing, virtual memory pages, page tables, and TLB bits." />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">🧮</span>
+      <div>
+        <h1>Cache Calc</h1>
+        <p class="tagline">Cache · Memory · Virtual Memory bit calculator</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="themeToggle" class="ghost" type="button" aria-label="Toggle theme">🌙</button>
+      <button id="resetBtn" class="ghost" type="button">Reset</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <p class="hint">
+      Enter any combination of values you know — derived fields fill in
+      automatically as you type. Leave fields blank if unknown.
+    </p>
+
+    <form id="calcForm" autocomplete="off">
+      <div class="grid">
+        <!-- Cache parameters -->
+        <section class="card">
+          <h2>Cache Parameters</h2>
+
+          <div class="field with-unit">
+            <label for="cache_size">Cache Size</label>
+            <div class="row">
+              <input type="number" step="any" min="0" id="cache_size" name="cache_size" placeholder="e.g. 32" />
+              <select id="cache_unit" name="cache_unit">
+                <option value="B">B</option>
+                <option value="KB" selected>KB</option>
+                <option value="MB">MB</option>
+                <option value="GB">GB</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="block_size">Block Size (Bytes)</label>
+            <input type="number" min="1" step="1" id="block_size" name="block_size" placeholder="e.g. 64" />
+          </div>
+
+          <div class="field">
+            <label for="num_blocks">Number of Blocks</label>
+            <input type="number" min="1" step="1" id="num_blocks" name="num_blocks" placeholder="leave blank to derive" />
+          </div>
+
+          <div class="field">
+            <label for="associativity">Associativity</label>
+            <input type="number" min="1" step="1" id="associativity" name="associativity" placeholder="1 = direct-mapped" />
+          </div>
+
+          <div class="field">
+            <label for="num_sets">Number of Sets</label>
+            <input type="number" min="1" step="1" id="num_sets" name="num_sets" placeholder="leave blank to derive" />
+          </div>
+
+          <div class="three">
+            <div class="field">
+              <label for="index_bits">Index Bits</label>
+              <input type="number" min="0" step="1" id="index_bits" name="index_bits" placeholder="" />
+            </div>
+            <div class="field">
+              <label for="tag_bits">Tag Bits</label>
+              <input type="number" min="0" step="1" id="tag_bits" name="tag_bits" placeholder="" />
+            </div>
+            <div class="field">
+              <label for="offset_bits">Offset Bits</label>
+              <input type="number" min="0" step="1" id="offset_bits" name="offset_bits" placeholder="" />
+            </div>
+          </div>
+        </section>
+
+        <!-- Memory / Virtual Memory parameters -->
+        <section class="card">
+          <h2>Memory &amp; Virtual Memory</h2>
+
+          <div class="field">
+            <label for="address_size">Physical Address Space (bits)</label>
+            <input type="number" min="1" step="1" id="address_size" name="address_size" placeholder="e.g. 32" />
+          </div>
+
+          <div class="field with-unit">
+            <label for="addressable_memory">Physical Memory</label>
+            <div class="row">
+              <input type="number" step="any" min="0" id="addressable_memory" name="addressable_memory" placeholder="" />
+              <select id="addr_mem_unit" name="addr_mem_unit">
+                <option value="B">B</option>
+                <option value="KB" selected>KB</option>
+                <option value="MB">MB</option>
+                <option value="GB">GB</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="virtual_address_size">Virtual Address Space (bits)</label>
+            <input type="number" min="1" step="1" id="virtual_address_size" name="virtual_address_size" placeholder="" />
+          </div>
+
+          <div class="field with-unit">
+            <label for="virtual_memory">Virtual Memory</label>
+            <div class="row">
+              <input type="number" step="any" min="0" id="virtual_memory" name="virtual_memory" placeholder="" />
+              <select id="virt_mem_unit" name="virt_mem_unit">
+                <option value="B">B</option>
+                <option value="KB">KB</option>
+                <option value="MB" selected>MB</option>
+                <option value="GB">GB</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field with-unit">
+            <label for="pagesize">Page Size</label>
+            <div class="row">
+              <input type="number" step="any" min="0" id="pagesize" name="pagesize" placeholder="e.g. 4" />
+              <select id="page_unit" name="page_unit">
+                <option value="B">B</option>
+                <option value="KB" selected>KB</option>
+                <option value="MB">MB</option>
+                <option value="GB">GB</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="three">
+            <div class="field">
+              <label for="tlb_rows">TLB Rows</label>
+              <input type="number" min="1" step="1" id="tlb_rows" name="tlb_rows" placeholder="" />
+            </div>
+            <div class="field">
+              <label for="protection_bits">Protection Bits</label>
+              <input type="number" min="0" step="1" id="protection_bits" name="protection_bits" placeholder="" />
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button id="clearBtn" type="button" class="ghost full">Clear</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </form>
+
+    <!-- Results -->
+    <section class="results">
+      <div class="grid">
+        <div class="card">
+          <h2>Cache Configuration</h2>
+          <dl id="cacheResults" class="results-list"></dl>
+        </div>
+        <div class="card">
+          <h2>Memory Configuration</h2>
+          <dl id="memResults" class="results-list"></dl>
+        </div>
+      </div>
+    </section>
+
+    <details class="formulas">
+      <summary>Formulas used</summary>
+      <ul>
+        <li><code>num_blocks = cache_size / block_size</code></li>
+        <li><code>num_sets = num_blocks / associativity</code></li>
+        <li><code>offset_bits = log₂(block_size)</code></li>
+        <li><code>index_bits = log₂(num_sets)</code></li>
+        <li><code>tag_bits = address_size − (index_bits + offset_bits)</code></li>
+        <li><code>num_tags = num_blocks</code></li>
+        <li><code>tag_space (bytes) = num_tags × tag_bits / 8</code></li>
+        <li><code>valid_bits (bytes) = num_blocks / 8</code></li>
+        <li><code>page_offset_bits = log₂(page_size)</code></li>
+        <li><code>virtual_pages = 2^(virtual_address_size − page_offset_bits)</code></li>
+        <li><code>physical_pages = physical_memory / page_size</code></li>
+        <li><code>VPN_bits = virtual_address_size − page_offset_bits</code></li>
+        <li><code>page_table_bits = virtual_pages × (phys_page_bits + protection_bits)</code></li>
+        <li><code>tlb_index = log₂(tlb_rows)</code></li>
+        <li><code>tlb_tag = VPN_bits − tlb_index</code></li>
+      </ul>
+    </details>
+  </main>
+
+  <footer class="foot">
+    <p>Built for computer architecture students · runs entirely in your browser · open source on <a href="#" id="repoLink" rel="noopener">GitHub</a></p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

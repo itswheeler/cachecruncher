@@ -1,0 +1,15 @@
+{
+  "name": "cache-calc",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cache, Memory & Virtual Memory bits calculator for computer architecture students.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "node --check src/worker.js && node --check public/app.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.80.0"
+  }
+}
