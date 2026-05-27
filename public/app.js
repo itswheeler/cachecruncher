@@ -33,8 +33,6 @@
 
   const FEEDBACK_KEY = 'cachecruncher-feedback-counts';
   const FEEDBACK_TYPES = [
-    { id: 'up', emoji: '👍', label: 'Thumbs up' },
-    { id: 'down', emoji: '👎', label: 'Thumbs down' },
     { id: 'love', emoji: '❤️', label: 'Flaming heart' },
     { id: 'death', emoji: '💀', label: 'Death' },
   ];
