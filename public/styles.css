@@ -77,6 +77,56 @@ button:active { transform: translateY(1px); }
 button.ghost { background: transparent; }
 button.full { width: 100%; }
 
+.github-sponsor-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .15s, border-color .15s, transform .05s;
+}
+
+.github-sponsor-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.github-sponsor-btn .github-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--bg-elev);
+  font-size: 12px;
+}
+
+.linkedin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .15s, border-color .15s, transform .05s;
+}
+
+.linkedin-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
 .container {
   max-width: 1100px;
   margin: 24px auto;
