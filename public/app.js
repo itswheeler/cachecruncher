@@ -31,9 +31,10 @@
     protection_bits:      { kind: 'int' },
   };
 
-  const FEEDBACK_KEY = 'cachecruncher-feedback-counts';
+  const SESSION_VOTED_KEY = 'cachecruncher-feedback-voted';
+  const SERVER_FEEDBACK_URL = '/api/feedback';
   const FEEDBACK_TYPES = [
-    { id: 'love', emoji: '❤️', label: 'Flaming heart' },
+    { id: 'love', emoji: '❤️‍🔥', label: 'Flaming heart' },
     { id: 'death', emoji: '💀', label: 'Death' },
   ];
   const feedbackCounts = Object.fromEntries(FEEDBACK_TYPES.map(({ id }) => [id, 0]));
@@ -106,23 +107,6 @@
     return v;
   }
 
-  function loadFeedbackCounts() {
-    try {
-      const raw = sessionStorage.getItem(FEEDBACK_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      for (const { id } of FEEDBACK_TYPES) {
-        feedbackCounts[id] = Number.isFinite(parsed?.[id]) ? parsed[id] : 0;
-      }
-    } catch {
-      // ignore malformed session data
-    }
-  }
-
-  function saveFeedbackCounts() {
-    sessionStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedbackCounts));
-  }
-
   function formatFeedbackSummary() {
     return FEEDBACK_TYPES.map(({ id, emoji }) => `${emoji} ${feedbackCounts[id]}`).join(' · ');
   }
@@ -130,14 +114,57 @@
   function updateFeedbackUI() {
     const summary = document.getElementById('feedbackSummary');
     if (!summary) return;
-    summary.textContent = `Session votes: ${formatFeedbackSummary()}`;
+    const voted = Boolean(sessionStorage.getItem(SESSION_VOTED_KEY));
+    const voteText = voted ? 'Thank you for voting this session.' : 'You can vote once per session.';
+    summary.textContent = `${voteText} Total: ${formatFeedbackSummary()}`;
+  }
+
+  function disableFeedbackButtons() {
+    document.querySelectorAll('.feedback-btn').forEach((button) => {
+      button.disabled = true;
+      button.classList.add('disabled');
+    });
+  }
+
+  async function fetchFeedbackTotals() {
+    try {
+      const res = await fetch(SERVER_FEEDBACK_URL, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load counts');
+      const data = await res.json();
+      for (const { id } of FEEDBACK_TYPES) {
+        feedbackCounts[id] = Number.isFinite(data?.[id]) ? data[id] : 0;
+      }
+    } catch {
+      // keep fallback counts if server is unavailable
+    }
+    updateFeedbackUI();
+  }
+
+  async function submitFeedback(id) {
+    if (!FEEDBACK_TYPES.some((type) => type.id === id)) return;
+    if (sessionStorage.getItem(SESSION_VOTED_KEY)) return;
+
+    try {
+      const res = await fetch(SERVER_FEEDBACK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: id }),
+      });
+      if (!res.ok) throw new Error('Failed to submit vote');
+      const data = await res.json();
+      for (const { id: typeId } of FEEDBACK_TYPES) {
+        feedbackCounts[typeId] = Number.isFinite(data?.[typeId]) ? data[typeId] : feedbackCounts[typeId];
+      }
+      sessionStorage.setItem(SESSION_VOTED_KEY, id);
+      disableFeedbackButtons();
+    } catch {
+      // ignore submit failure; user can try again later
+    }
+    updateFeedbackUI();
   }
 
   function incrementFeedback(id) {
-    if (!(id in feedbackCounts)) return;
-    feedbackCounts[id] += 1;
-    saveFeedbackCounts();
-    updateFeedbackUI();
+    submitFeedback(id);
   }
 
   // ─────────────────────────────── rules ───────────────────────────────────
@@ -418,8 +445,10 @@
       });
     });
 
-    loadFeedbackCounts();
-    updateFeedbackUI();
+    if (sessionStorage.getItem(SESSION_VOTED_KEY)) {
+      disableFeedbackButtons();
+    }
+    fetchFeedbackTotals();
 
     const themeBtn = $('themeToggle');
     const saved = localStorage.getItem('cc-theme');

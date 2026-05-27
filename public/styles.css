@@ -318,14 +318,14 @@ input.auto-filled {
 
 .feedback-buttons {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 12px;
 }
 
 .feedback-btn {
   font-size: 24px;
-  padding: 14px 0;
+  padding: 10px 0;
   border-radius: 14px;
   border: 1px solid var(--border);
   background: var(--bg);
@@ -342,6 +342,40 @@ input.auto-filled {
 .feedback-summary {
   color: var(--muted);
   font-size: 13px;
+}
+
+.support-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.small-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.small-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.small-btn.github-sponsor-btn {
+  gap: 6px;
+}
+
+.small-btn.bmc-btn {
 }
 
 .sponsor-link {

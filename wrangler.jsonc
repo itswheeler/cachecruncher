@@ -1,18 +1,31 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "cachecruncher",
-  "main": "src/worker.js",
-  "compatibility_date": "2026-04-03",
-  "observability": {
-    "enabled": true
-  },
-  "assets": {
-    "directory": "public",
-    "binding": "ASSETS",
-    "not_found_handling": "single-page-application"
-  },
-  "routes": [
-    { "pattern": "cachecruncher.com", "custom_domain": true },
-    { "pattern": "www.cachecruncher.com", "custom_domain": true }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "cachecruncher",
+	"main": "src/worker.js",
+	"compatibility_date": "2026-04-03",
+	"observability": {
+		"enabled": true
+	},
+	"assets": {
+		"directory": "public",
+		"binding": "ASSETS",
+		"not_found_handling": "single-page-application"
+	},
+	"routes": [
+		{
+			"pattern": "cachecruncher.com",
+			"custom_domain": true
+		},
+		{
+			"pattern": "www.cachecruncher.com",
+			"custom_domain": true
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "cachecruncher_feedback",
+			"id": "cd79582eee82452dbc90facc318ba4a4",
+			"remote": true
+		}
+	]
 }
