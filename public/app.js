@@ -31,6 +31,15 @@
     protection_bits:      { kind: 'int' },
   };
 
+  const FEEDBACK_KEY = 'cachecruncher-feedback-counts';
+  const FEEDBACK_TYPES = [
+    { id: 'up', emoji: '👍', label: 'Thumbs up' },
+    { id: 'down', emoji: '👎', label: 'Thumbs down' },
+    { id: 'love', emoji: '❤️', label: 'Flaming heart' },
+    { id: 'death', emoji: '💀', label: 'Death' },
+  ];
+  const feedbackCounts = Object.fromEntries(FEEDBACK_TYPES.map(({ id }) => [id, 0]));
+
   // ─────────────────────────────── state ───────────────────────────────────
   const state = {};      // id -> 'empty' | 'user' | 'auto'
   const editedAt = {};   // id -> recency counter
@@ -97,6 +106,40 @@
     const v = {};
     for (const id of Object.keys(FIELDS)) v[id] = readField(id);
     return v;
+  }
+
+  function loadFeedbackCounts() {
+    try {
+      const raw = sessionStorage.getItem(FEEDBACK_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      for (const { id } of FEEDBACK_TYPES) {
+        feedbackCounts[id] = Number.isFinite(parsed?.[id]) ? parsed[id] : 0;
+      }
+    } catch {
+      // ignore malformed session data
+    }
+  }
+
+  function saveFeedbackCounts() {
+    sessionStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedbackCounts));
+  }
+
+  function formatFeedbackSummary() {
+    return FEEDBACK_TYPES.map(({ id, emoji }) => `${emoji} ${feedbackCounts[id]}`).join(' · ');
+  }
+
+  function updateFeedbackUI() {
+    const summary = document.getElementById('feedbackSummary');
+    if (!summary) return;
+    summary.textContent = `Session votes: ${formatFeedbackSummary()}`;
+  }
+
+  function incrementFeedback(id) {
+    if (!(id in feedbackCounts)) return;
+    feedbackCounts[id] += 1;
+    saveFeedbackCounts();
+    updateFeedbackUI();
   }
 
   // ─────────────────────────────── rules ───────────────────────────────────
@@ -370,6 +413,15 @@
 
     $('clearBtn').addEventListener('click', clearAll);
     $('resetBtn').addEventListener('click', clearAll);
+
+    document.querySelectorAll('.feedback-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        incrementFeedback(button.dataset.feedback);
+      });
+    });
+
+    loadFeedbackCounts();
+    updateFeedbackUI();
 
     const themeBtn = $('themeToggle');
     const saved = localStorage.getItem('cc-theme');

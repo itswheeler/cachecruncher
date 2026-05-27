@@ -219,6 +219,53 @@ input.auto-filled {
   padding: 24px 16px 40px;
 }
 
+.feedback-card {
+  margin-top: 24px;
+}
+
+.feedback-copy {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.feedback-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.feedback-btn {
+  font-size: 24px;
+  padding: 14px 0;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: inherit;
+  transition: transform .12s ease, border-color .15s, background .15s;
+}
+
+.feedback-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.feedback-summary {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sponsor-link {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sponsor-link:hover {
+  text-decoration: underline;
+}
+
 .seo-content {
   margin-top: 28px;
   padding: 24px 28px;
