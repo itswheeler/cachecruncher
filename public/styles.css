@@ -297,7 +297,7 @@ input.auto-filled {
 
 .simulator-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 170px auto auto auto;
+  grid-template-columns: minmax(220px, 1fr) 160px 140px auto auto auto;
   gap: 10px;
   align-items: end;
   margin-bottom: 18px;
@@ -327,6 +327,10 @@ input.auto-filled {
 }
 
 .simulator-summary-panels {
+  grid-template-columns: 1fr 1fr;
+}
+
+.simulator-hierarchy-panels {
   grid-template-columns: 1fr 1fr;
 }
 
@@ -479,6 +483,12 @@ input.auto-filled {
 .state-badge.loaded {
   background: var(--bg);
   color: var(--text);
+}
+
+.state-badge.dirty {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.4);
 }
 
 .state-badge.active {
@@ -708,7 +718,7 @@ button:disabled {
   }
 
   .simulator-toolbar {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
 
   .bit-breakdown {

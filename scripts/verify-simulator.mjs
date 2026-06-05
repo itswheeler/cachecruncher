@@ -14,12 +14,20 @@ function createSimulator(config) {
         tag: null,
         blockNumber: null,
         baseAddress: null,
+        dirty: false,
       })),
     ),
+    tlb: Array.from({ length: config.tlbRows || 0 }, (_, index) => ({
+      index,
+      valid: false,
+      tag: null,
+      vpn: null,
+      physicalPage: null,
+    })),
   };
 }
 
-function access(simulator, address, config) {
+function access(simulator, address, config, operation = 'read') {
   const blockNumber = Math.floor(address / config.blockSize);
   const setIndex = blockNumber % config.numSets;
   const tag = Math.floor(blockNumber / config.numSets);
@@ -39,9 +47,38 @@ function access(simulator, address, config) {
     line.tag = tag;
     line.blockNumber = blockNumber;
     line.baseAddress = blockNumber * config.blockSize;
+    line.dirty = false;
+  }
+  if (operation === 'write') {
+    line.dirty = true;
   }
 
-  return { outcome, blockNumber, setIndex, tag, offset, way: line.way };
+  return { outcome, blockNumber, setIndex, tag, offset, way: line.way, dirty: line.dirty };
+}
+
+function translateVirtual(simulator, address, config) {
+  const vpn = Math.floor(address / config.pageSize);
+  const pageOffset = address % config.pageSize;
+  const tlbIndex = vpn % config.tlbRows;
+  const tlbTag = Math.floor(vpn / config.tlbRows);
+  const entry = simulator.tlb[tlbIndex];
+  const tlbHit = entry.valid && entry.tag === tlbTag;
+  const physicalPage = tlbHit ? entry.physicalPage : (vpn % config.physicalPages);
+  if (!tlbHit) {
+    entry.valid = true;
+    entry.tag = tlbTag;
+    entry.vpn = vpn;
+    entry.physicalPage = physicalPage;
+  }
+  return {
+    vpn,
+    pageOffset,
+    tlbIndex,
+    tlbTag,
+    tlbHit,
+    physicalPage,
+    physicalAddress: (physicalPage * config.pageSize) + pageOffset,
+  };
 }
 
 (function run() {
@@ -62,6 +99,9 @@ function access(simulator, address, config) {
   assert(second.outcome === 'Hit', 'second access to same block should hit');
   assert(second.setIndex === 3, '0x38 should remain in set 3');
   assert(second.tag === 0, '0x38 should still have tag 0');
+
+  const writeHit = access(directSim, 0x38, directMapped, 'write');
+  assert(writeHit.dirty === true, 'write access should mark the cache line dirty');
 
   const third = access(directSim, 0xB8, directMapped);
   assert(third.outcome === 'Miss', 'different tag in same set should miss');
@@ -85,16 +125,19 @@ function access(simulator, address, config) {
   const virtualConfig = {
     pageSize: 16 * 1024,
     physicalPages: 2,
+    tlbRows: 4,
   };
   const virtualAddress = 0x4500;
-  const vpn = Math.floor(virtualAddress / virtualConfig.pageSize);
-  const pageOffset = virtualAddress % virtualConfig.pageSize;
-  const physicalPage = vpn % virtualConfig.physicalPages;
-  const physicalAddress = (physicalPage * virtualConfig.pageSize) + pageOffset;
-  assert(vpn === 1, '0x4500 should translate to VPN 1 with 16KB pages');
-  assert(pageOffset === 0x500, '0x4500 should have page offset 0x500');
-  assert(physicalPage === 1, 'VPN 1 should map to physical page 1 in the demo translation');
-  assert(physicalAddress === 0x4500, 'demo translation should preserve 0x4500 for VPN 1 with two physical pages');
+  const virtualSim = createSimulator({ numSets: 1, associativity: 1, tlbRows: virtualConfig.tlbRows });
+  const firstTranslation = translateVirtual(virtualSim, virtualAddress, virtualConfig);
+  assert(firstTranslation.vpn === 1, '0x4500 should translate to VPN 1 with 16KB pages');
+  assert(firstTranslation.pageOffset === 0x500, '0x4500 should have page offset 0x500');
+  assert(firstTranslation.physicalPage === 1, 'VPN 1 should map to physical page 1 in the demo translation');
+  assert(firstTranslation.physicalAddress === 0x4500, 'demo translation should preserve 0x4500 for VPN 1 with two physical pages');
+  assert(firstTranslation.tlbHit === false, 'first virtual lookup should miss in the TLB');
+
+  const secondTranslation = translateVirtual(virtualSim, virtualAddress, virtualConfig);
+  assert(secondTranslation.tlbHit === true, 'second virtual lookup should hit in the TLB');
 
   console.log('simulator mapping checks passed');
 })();

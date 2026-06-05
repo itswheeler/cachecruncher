@@ -284,6 +284,13 @@
             <option value="virtual">Virtual Address</option>
           </select>
         </label>
+        <label class="field simulator-mode-field" for="simOperation">
+          <span>Operation</span>
+          <select id="simOperation">
+            <option value="read">Read</option>
+            <option value="write">Write</option>
+          </select>
+        </label>
         <button type="button" id="simAddBtn">Access Address</button>
         <button type="button" id="simRandomBtn" class="ghost">Random</button>
         <button type="button" id="simResetBtn" class="ghost">Reset Trace</button>
@@ -305,6 +312,18 @@
         <h3>Trace</h3>
         <ol id="simTrace" class="trace-list"></ol>
       </section>
+
+      <div class="simulator-panels simulator-hierarchy-panels">
+        <section class="sim-panel">
+          <h3>TLB Table</h3>
+          <div id="simTlbTable" class="table-shell empty-state">TLB activity will appear here.</div>
+        </section>
+
+        <section class="sim-panel">
+          <h3>Page Table</h3>
+          <div id="simPageTable" class="table-shell empty-state">Page table rows will appear here.</div>
+        </section>
+      </div>
 
       <div class="simulator-panels simulator-tables">
         <section class="sim-panel">

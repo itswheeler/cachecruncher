@@ -43,6 +43,7 @@
   const simulator = {
     configKey: '',
     lines: [],
+    tlb: [],
     replacement: [],
     trace: [],
     accessCount: 0,
@@ -209,9 +210,19 @@
         tag: null,
         blockNumber: null,
         baseAddress: null,
+        dirty: false,
         lastUsed: 0,
       })),
     );
+    simulator.tlb = config.tlbRows && isPow2(config.tlbRows)
+      ? Array.from({ length: config.tlbRows }, (_, index) => ({
+          index,
+          valid: false,
+          tag: null,
+          vpn: null,
+          physicalPage: null,
+        }))
+      : [];
     simulator.replacement = Array.from({ length: config.numSets }, () => 0);
     simulator.trace = [];
     simulator.accessCount = 0;
@@ -221,6 +232,7 @@
   function resetSimulator() {
     simulator.configKey = '';
     simulator.lines = [];
+    simulator.tlb = [];
     simulator.replacement = [];
     simulator.trace = [];
     simulator.accessCount = 0;
@@ -248,12 +260,21 @@
 
   function resolveAccess(inputAddress, mode, config) {
     if (mode === 'virtual') {
+      ensureSimulator(config);
       const vpn = Math.floor(inputAddress / config.pageSize);
       const pageOffset = inputAddress % config.pageSize;
-      const physicalPage = vpn % config.physicalPages;
-      const physicalAddress = (physicalPage * config.pageSize) + pageOffset;
       const tlbIndex = config.tlbRows && isPow2(config.tlbRows) ? vpn % config.tlbRows : null;
       const tlbTag = config.tlbRows && isPow2(config.tlbRows) ? Math.floor(vpn / config.tlbRows) : null;
+      const tlbEntry = tlbIndex != null ? simulator.tlb[tlbIndex] : null;
+      const tlbHit = Boolean(tlbEntry && tlbEntry.valid && tlbEntry.tag === tlbTag);
+      const physicalPage = tlbHit ? tlbEntry.physicalPage : (vpn % config.physicalPages);
+      if (tlbEntry && !tlbHit) {
+        tlbEntry.valid = true;
+        tlbEntry.tag = tlbTag;
+        tlbEntry.vpn = vpn;
+        tlbEntry.physicalPage = physicalPage;
+      }
+      const physicalAddress = (physicalPage * config.pageSize) + pageOffset;
       return {
         mode,
         inputAddress,
@@ -264,7 +285,8 @@
         physicalAddress,
         tlbIndex,
         tlbTag,
-        translationNote: `Demo translation uses VPN mod physical pages (${config.physicalPages}) to choose a physical frame.`,
+        tlbHit,
+        translationNote: `Demo translation uses VPN mod physical pages (${config.physicalPages}) after a direct-mapped TLB lookup.`,
       };
     }
 
@@ -275,7 +297,7 @@
     };
   }
 
-  function simulateAccess(address, config, translation) {
+  function simulateAccess(address, config, translation, operation = 'read') {
     ensureSimulator(config);
     const blockNumber = Math.floor(address / config.blockSize);
     const setIndex = blockNumber % config.numSets;
@@ -284,30 +306,38 @@
     const set = simulator.lines[setIndex];
     let line = set.find((entry) => entry.valid && entry.tag === tag);
     let outcome = 'Hit';
+    let evicted = null;
     if (!line) {
       outcome = 'Miss';
       line = set.find((entry) => !entry.valid);
       if (!line) {
         line = set[simulator.replacement[setIndex] % set.length];
         simulator.replacement[setIndex] = (simulator.replacement[setIndex] + 1) % set.length;
+        evicted = { dirty: line.dirty, blockNumber: line.blockNumber, tag: line.tag };
       }
       line.valid = true;
       line.tag = tag;
       line.blockNumber = blockNumber;
       line.baseAddress = blockNumber * config.blockSize;
+      line.dirty = false;
     }
     simulator.accessCount += 1;
     line.lastUsed = simulator.accessCount;
+    if (operation === 'write') {
+      line.dirty = true;
+    }
     const access = {
       address,
       inputAddress: translation?.inputAddress ?? address,
       mode: translation?.mode ?? 'physical',
+      operation,
       virtualAddress: translation?.virtualAddress ?? null,
       vpn: translation?.vpn ?? null,
       pageOffset: translation?.pageOffset ?? null,
       physicalPage: translation?.physicalPage ?? null,
       tlbIndex: translation?.tlbIndex ?? null,
       tlbTag: translation?.tlbTag ?? null,
+      tlbHit: translation?.tlbHit ?? null,
       translationNote: translation?.translationNote ?? '',
       blockNumber,
       setIndex,
@@ -315,6 +345,8 @@
       offset,
       way: line.way,
       outcome,
+      dirty: line.dirty,
+      evicted,
       baseAddress: blockNumber * config.blockSize,
       bytes: Array.from({ length: Math.min(config.blockSize, 8) }, (_, index) => blockNumber * config.blockSize + index),
     };
@@ -334,14 +366,16 @@
 
     const cells = access.mode === 'virtual'
       ? [
+          ['Operation', access.operation.toUpperCase()],
           ['Virtual', toHex(access.virtualAddress)],
           ['VPN', String(access.vpn)],
           ['Page Offset', String(access.pageOffset)],
           ['Physical Frame', String(access.physicalPage)],
           ['Physical', toHex(access.address)],
-          ['TLB', access.tlbIndex != null && access.tlbTag != null ? `index ${access.tlbIndex} · tag ${access.tlbTag}` : 'Not configured'],
+          ['TLB', access.tlbIndex != null && access.tlbTag != null ? `${access.tlbHit ? 'hit' : 'miss'} · index ${access.tlbIndex} · tag ${access.tlbTag}` : 'Not configured'],
         ]
       : [
+          ['Operation', access.operation.toUpperCase()],
           ['Physical', toHex(access.address)],
           ['Block', String(access.blockNumber)],
           ['Set', String(access.setIndex)],
@@ -368,10 +402,12 @@
     const offsetBits = binary.slice(binary.length - config.offsetBits) || '—';
     el.className = 'bit-breakdown';
     el.innerHTML = [
+      ['Op', access.operation.toUpperCase()],
       ['Tag', tagBits],
       ['Index', indexBits],
       ['Offset', offsetBits],
       ['Result', `${access.outcome} in set ${access.setIndex}, way ${access.way}`],
+      ['Dirty', access.dirty ? '1' : '0'],
     ].map(([label, value]) => `<div class="bit-cell"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
   }
 
@@ -383,10 +419,70 @@
     }
     el.innerHTML = simulator.trace.map((access) => `
       <li class="trace-item ${access.outcome.toLowerCase()}">
-        <div><strong>${escapeHtml(access.mode === 'virtual' ? `${toHex(access.virtualAddress)} → ${toHex(access.address)}` : toHex(access.address))}</strong> <span>${escapeHtml(access.outcome)}</span></div>
-        <div>set ${access.setIndex} · way ${access.way} · tag ${escapeHtml(toHex(access.tag))} · block ${access.blockNumber}</div>
+        <div><strong>${escapeHtml(`${access.operation.toUpperCase()} ${access.mode === 'virtual' ? `${toHex(access.virtualAddress)} → ${toHex(access.address)}` : toHex(access.address)}`)}</strong> <span>${escapeHtml(access.outcome)}</span></div>
+        <div>set ${access.setIndex} · way ${access.way} · tag ${escapeHtml(toHex(access.tag))} · block ${access.blockNumber}${access.mode === 'virtual' && access.tlbHit != null ? ` · tlb ${access.tlbHit ? 'hit' : 'miss'}` : ''}${access.evicted?.dirty ? ' · write-back' : ''}</div>
       </li>
     `).join('');
+  }
+
+  function renderTlbTable(config) {
+    const el = $('simTlbTable');
+    if (!config || !supportsVirtualTranslation(config) || !$('simAddressType') || $('simAddressType').value !== 'virtual') {
+      el.className = 'table-shell empty-state';
+      el.textContent = 'Switch to virtual mode to view TLB activity.';
+      return;
+    }
+    if (!simulator.tlb.length) {
+      el.className = 'table-shell empty-state';
+      el.textContent = 'TLB rows will appear here.';
+      return;
+    }
+    const rows = simulator.tlb.map((entry) => {
+      const current = simulator.lastAccess && simulator.lastAccess.tlbIndex === entry.index;
+      return `
+        <tr class="${current ? 'active-row' : ''}">
+          <td>${entry.index}</td>
+          <td>${entry.valid ? '1' : '0'}</td>
+          <td>${entry.valid ? escapeHtml(toHex(entry.tag)) : '—'}</td>
+          <td>${entry.valid ? entry.vpn : '—'}</td>
+          <td>${entry.valid ? entry.physicalPage : '—'}</td>
+        </tr>
+      `;
+    }).join('');
+    el.className = 'table-shell';
+    el.innerHTML = `<table class="sim-table"><thead><tr><th>Index</th><th>Valid</th><th>Tag</th><th>VPN</th><th>PPN</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  function renderPageTable(config) {
+    const el = $('simPageTable');
+    if (!config || !supportsVirtualTranslation(config) || !$('simAddressType') || $('simAddressType').value !== 'virtual') {
+      el.className = 'table-shell empty-state';
+      el.textContent = 'Switch to virtual mode to view page table mappings.';
+      return;
+    }
+    if (!simulator.lastAccess || simulator.lastAccess.vpn == null) {
+      el.className = 'table-shell empty-state';
+      el.textContent = 'Page table rows will appear here.';
+      return;
+    }
+    const currentVpn = simulator.lastAccess.vpn;
+    const maxVpn = Math.max(0, (2 ** config.vpnBits) - 1);
+    const startVpn = Math.max(0, currentVpn - 2);
+    const endVpn = Math.min(maxVpn, currentVpn + 2);
+    const rows = [];
+    for (let vpn = startVpn; vpn <= endVpn; vpn += 1) {
+      const physicalPage = vpn % config.physicalPages;
+      rows.push(`
+        <tr class="${vpn === currentVpn ? 'active-row' : ''}">
+          <td>${vpn}</td>
+          <td>1</td>
+          <td>${physicalPage}</td>
+          <td>${vpn === currentVpn ? 'Current' : 'Mapped'}</td>
+        </tr>
+      `);
+    }
+    el.className = 'table-shell';
+    el.innerHTML = `<table class="sim-table"><thead><tr><th>VPN</th><th>Valid</th><th>PPN</th><th>State</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
   }
 
   function renderCacheTable(config) {
@@ -401,12 +497,12 @@
     simulator.lines.forEach((set, setIndex) => {
       set.forEach((line) => {
         const current = simulator.lastAccess && simulator.lastAccess.setIndex === setIndex && simulator.lastAccess.way === line.way;
-        const stateLabel = line.valid ? (current ? 'Active' : 'Loaded') : 'Empty';
+        const stateLabel = line.valid ? (current ? 'Active' : (line.dirty ? 'Dirty' : 'Loaded')) : 'Empty';
         const mapping = line.valid
           ? `<div class="mapping-cell">
               <strong>${escapeHtml(toHex(line.tag))}</strong>
               <span>tag</span>
-              <div class="mapping-meta">block ${line.blockNumber} · base ${escapeHtml(toHex(line.baseAddress))}</div>
+              <div class="mapping-meta">block ${line.blockNumber} · base ${escapeHtml(toHex(line.baseAddress))} · dirty ${line.dirty ? '1' : '0'}</div>
             </div>`
           : '<div class="mapping-empty">No block loaded yet</div>';
         rows.push(`
@@ -470,6 +566,8 @@
       renderBreakdown(null, null);
       renderTranslation(null, null);
       renderTrace();
+      renderTlbTable(null);
+      renderPageTable(null);
       renderCacheTable(null);
       renderMemoryTable(null);
       return;
@@ -493,6 +591,8 @@
     renderTranslation(simulator.lastAccess, config);
     renderBreakdown(simulator.lastAccess, config);
     renderTrace();
+    renderTlbTable(config);
+    renderPageTable(config);
     renderCacheTable(config);
     renderMemoryTable(config);
   }
@@ -830,6 +930,7 @@
     $('simResetBtn').addEventListener('click', handleResetTrace);
     $('simAddressType').addEventListener('change', () => {
       $('simAddress').value = '';
+      clearSimulatorTrace(getCurrentSimulatorConfig());
       renderSimulator(readAll());
     });
     $('simAddress').addEventListener('keydown', (event) => {
@@ -881,6 +982,7 @@
     resetSimulator();
     $('simAddress').value = '';
     $('simAddressType').value = 'physical';
+    $('simOperation').value = 'read';
     recompute();
   }
 
@@ -893,6 +995,7 @@
     if (!config) return;
     const input = $('simAddress');
     const mode = $('simAddressType').value;
+    const operation = $('simOperation').value;
     const bitWidth = mode === 'virtual' ? config.virtualAddressSize : config.addressSize;
     const address = parseAddressInput(input.value, bitWidth);
     if (address == null) {
@@ -901,8 +1004,8 @@
       return;
     }
     const translation = resolveAccess(address, mode, config);
-    simulateAccess(translation.physicalAddress, config, translation);
-    $('simStatus').textContent = `Last access ${mode === 'virtual' ? `${toHex(address)} → ${toHex(translation.physicalAddress)}` : toHex(address)} → ${simulator.lastAccess.outcome} in set ${simulator.lastAccess.setIndex}, way ${simulator.lastAccess.way}.`;
+    simulateAccess(translation.physicalAddress, config, translation, operation);
+    $('simStatus').textContent = `Last ${operation} ${mode === 'virtual' ? `${toHex(address)} → ${toHex(translation.physicalAddress)}` : toHex(address)} → ${simulator.lastAccess.outcome} in set ${simulator.lastAccess.setIndex}, way ${simulator.lastAccess.way}${simulator.lastAccess.dirty ? ' · dirty' : ''}.`;
     $('simStatus').className = `simulator-status ready ${simulator.lastAccess.outcome.toLowerCase()}`;
     renderSimulator(readAll());
   }
