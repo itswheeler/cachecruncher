@@ -411,6 +411,39 @@
     ].map(([label, value]) => `<div class="bit-cell"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
   }
 
+  function renderAddressChain(access, config) {
+    const el = $('simChain');
+    if (!access || !config) {
+      el.className = 'address-chain empty-state';
+      el.textContent = 'No access yet.';
+      return;
+    }
+
+    const isVirtual = access.mode === 'virtual';
+    const blockBase = access.blockNumber * config.blockSize;
+    const steps = isVirtual
+      ? [
+          ['Virtual address', toHex(access.virtualAddress)],
+          ['VPN', String(access.vpn)],
+          ['TLB', access.tlbIndex != null ? `${access.tlbHit ? 'hit' : 'miss'} · row ${access.tlbIndex}` : 'not used'],
+          ['PPN', String(access.physicalPage)],
+          ['Physical address', toHex(access.address)],
+        ]
+      : [
+          ['Physical address', toHex(access.address)],
+          ['Block', String(access.blockNumber)],
+          ['Set', String(access.setIndex)],
+        ];
+
+    steps.push(
+      ['Cache line', `set ${access.setIndex} · way ${access.way} · ${access.outcome}`],
+      ['Memory block', `${access.blockNumber} · base ${toHex(blockBase)} · ${toHex(blockBase + config.blockSize - 1)}`],
+    );
+
+    el.className = 'address-chain';
+    el.innerHTML = steps.map(([label, value]) => `<div class="chain-step"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
+  }
+
   function renderTrace() {
     const el = $('simTrace');
     if (!simulator.trace.length) {
@@ -450,7 +483,7 @@
       `;
     }).join('');
     el.className = 'table-shell';
-    el.innerHTML = `<table class="sim-table"><thead><tr><th>Index</th><th>Valid</th><th>Tag</th><th>VPN</th><th>PPN</th></tr></thead><tbody>${rows}</tbody></table>`;
+    el.innerHTML = `<table class="sim-table"><thead><tr><th>Row</th><th>V</th><th>TLB Tag</th><th>VPN</th><th>PPN</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   function renderPageTable(config) {
@@ -475,14 +508,14 @@
       rows.push(`
         <tr class="${vpn === currentVpn ? 'active-row' : ''}">
           <td>${vpn}</td>
-          <td>1</td>
           <td>${physicalPage}</td>
-          <td>${vpn === currentVpn ? 'Current' : 'Mapped'}</td>
+          <td>${escapeHtml(toHex(physicalPage * config.pageSize))}</td>
+          <td>${vpn === currentVpn ? 'Current VPN' : 'Mapped VPN'}</td>
         </tr>
       `);
     }
     el.className = 'table-shell';
-    el.innerHTML = `<table class="sim-table"><thead><tr><th>VPN</th><th>Valid</th><th>PPN</th><th>State</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+    el.innerHTML = `<table class="sim-table"><thead><tr><th>VPN</th><th>PPN</th><th>Base</th><th>Status</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
   }
 
   function renderCacheTable(config) {
@@ -590,6 +623,7 @@
     simInput.disabled = false;
     renderTranslation(simulator.lastAccess, config);
     renderBreakdown(simulator.lastAccess, config);
+    renderAddressChain(simulator.lastAccess, config);
     renderTrace();
     renderTlbTable(config);
     renderPageTable(config);
