@@ -3,11 +3,11 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Cache, Memory & Virtual Memory bits calculator for computer architecture students.",
+  "description": "Cache Simulator and Memory Simulator for computer architecture students.",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "check": "node --check src/worker.js && node --check public/app.js"
+    "check": "node --check src/worker.js && node --check public/app.js && node scripts/verify-simulator.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.80.0"
