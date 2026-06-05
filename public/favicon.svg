@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Cache Cruncher favicon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d2340" />
+      <stop offset="100%" stop-color="#0f142a" />
+    </linearGradient>
+    <linearGradient id="hot" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fb7185" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bg)" />
+
+  <g fill="none" stroke="#5b6b9a" stroke-width="2" stroke-linecap="round">
+    <line x1="8" y1="18" x2="56" y2="18" />
+    <line x1="8" y1="32" x2="56" y2="32" />
+    <line x1="8" y1="46" x2="56" y2="46" />
+  </g>
+
+  <g>
+    <rect x="12" y="12" width="12" height="12" rx="3" fill="#47567f" />
+    <rect x="26" y="12" width="12" height="12" rx="3" fill="#47567f" />
+    <rect x="40" y="12" width="12" height="12" rx="3" fill="#47567f" />
+
+    <rect x="12" y="26" width="12" height="12" rx="3" fill="#47567f" />
+    <rect x="26" y="26" width="12" height="12" rx="3" fill="url(#hot)" />
+    <rect x="40" y="26" width="12" height="12" rx="3" fill="#47567f" />
+
+    <rect x="12" y="40" width="12" height="12" rx="3" fill="#47567f" />
+    <rect x="26" y="40" width="12" height="12" rx="3" fill="#47567f" />
+    <rect x="40" y="40" width="12" height="12" rx="3" fill="#47567f" />
+  </g>
+
+  <path d="M8 56 L22 56 L22 50 L34 62 L22 74 L22 68 L8 68 Z" transform="translate(0,-12) scale(.75)" fill="#c7d2fe" opacity="0.95" />
+</svg>
