@@ -267,7 +267,7 @@
       <div class="simulator-head">
         <div>
           <h2>Cache Simulator</h2>
-          <p class="simulator-copy">Run an address trace and watch the cache table, tag/index/offset breakdown, and nearby memory blocks update.</p>
+          <p class="simulator-copy">Step through addresses and keep the main view focused on translation, cache state, and TLB activity. Extra memory views stay tucked into a compact reference area.</p>
         </div>
         <div class="simulator-status" id="simStatus">Configure a valid cache geometry to start the simulator.</div>
       </div>
@@ -313,29 +313,32 @@
         <ol id="simTrace" class="trace-list"></ol>
       </section>
 
-      <div class="simulator-panels simulator-hierarchy-panels">
-        <section class="sim-panel">
-          <h3>TLB Table</h3>
-          <div id="simTlbTable" class="table-shell empty-state">TLB activity will appear here.</div>
-        </section>
-
-        <section class="sim-panel">
-          <h3>Page Table</h3>
-          <div id="simPageTable" class="table-shell empty-state">Page table rows will appear here.</div>
-        </section>
-      </div>
-
-      <div class="simulator-panels simulator-tables">
+      <div class="simulator-panels simulator-primary-panels">
         <section class="sim-panel">
           <h3>Cache Table</h3>
           <div id="simCacheTable" class="table-shell empty-state">Cache table will appear here.</div>
         </section>
 
         <section class="sim-panel">
-          <h3>Memory Blocks</h3>
-          <div id="simMemoryTable" class="table-shell empty-state">Memory blocks will appear here.</div>
+          <h3>TLB Table</h3>
+          <div id="simTlbTable" class="table-shell empty-state">TLB activity will appear here.</div>
         </section>
       </div>
+
+      <details class="simulator-reference">
+        <summary>Page Table and Memory Blocks</summary>
+        <div class="simulator-panels simulator-reference-panels">
+          <section class="sim-panel">
+            <h3>Page Table</h3>
+            <div id="simPageTable" class="table-shell empty-state">Page table rows will appear here.</div>
+          </section>
+
+          <section class="sim-panel">
+            <h3>Memory Blocks</h3>
+            <div id="simMemoryTable" class="table-shell empty-state">Memory blocks will appear here.</div>
+          </section>
+        </div>
+      </details>
     </section>
 
     <section class="card feedback-card">
