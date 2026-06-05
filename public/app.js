@@ -300,19 +300,25 @@
       el.textContent = 'Cache table will appear here.';
       return;
     }
-    const headers = ['Set', 'Way', 'Valid', 'Tag', 'Block', 'Base Address'];
+    const headers = ['Set', 'Way', 'State', 'Mapping'];
     const rows = [];
     simulator.lines.forEach((set, setIndex) => {
       set.forEach((line) => {
         const current = simulator.lastAccess && simulator.lastAccess.setIndex === setIndex && simulator.lastAccess.way === line.way;
+        const stateLabel = line.valid ? (current ? 'Active' : 'Loaded') : 'Empty';
+        const mapping = line.valid
+          ? `<div class="mapping-cell">
+              <strong>${escapeHtml(toHex(line.tag))}</strong>
+              <span>tag</span>
+              <div class="mapping-meta">block ${line.blockNumber} · base ${escapeHtml(toHex(line.baseAddress))}</div>
+            </div>`
+          : '<div class="mapping-empty">No block loaded yet</div>';
         rows.push(`
           <tr class="${current ? 'active-row' : ''}">
             <td>${setIndex}</td>
             <td>${line.way}</td>
-            <td>${line.valid ? '1' : '0'}</td>
-            <td>${line.valid ? escapeHtml(toHex(line.tag)) : '—'}</td>
-            <td>${line.valid ? line.blockNumber : '—'}</td>
-            <td>${line.valid ? escapeHtml(toHex(line.baseAddress)) : '—'}</td>
+            <td><span class="state-badge ${stateLabel.toLowerCase()}">${stateLabel}</span></td>
+            <td>${mapping}</td>
           </tr>
         `);
       });
