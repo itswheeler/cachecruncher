@@ -417,6 +417,11 @@ input.auto-filled {
   max-height: 300px;
 }
 
+.simulator-primary-panels .table-shell {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 .simulator-primary-panels .sim-table,
 .simulator-reference-panels .sim-table {
   font-size: 12px;
@@ -517,6 +522,7 @@ input.auto-filled {
 }
 
 .table-shell {
+  max-width: 100%;
   overflow: auto;
 }
 
@@ -532,6 +538,7 @@ input.auto-filled {
 
 .sim-table {
   width: 100%;
+  min-width: 480px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -824,7 +831,15 @@ button:disabled {
   }
 
   .simulator-toolbar {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .simulator-address-field {
+    grid-column: 1 / -1;
+  }
+
+  .simulator-toolbar button {
+    width: 100%;
   }
 
   .bit-breakdown {
@@ -837,8 +852,25 @@ button:disabled {
 }
 
 @media (max-width: 640px) {
+  .container {
+    padding: 0 12px 28px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .three {
+    grid-template-columns: 1fr;
+  }
+
   .simulator-toolbar {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .simulator-address-field {
+    grid-column: auto;
   }
 
   .bit-breakdown {
@@ -851,6 +883,32 @@ button:disabled {
 
   .sim-panel {
     padding: 14px;
+  }
+
+  .address-chain {
+    grid-template-columns: 1fr;
+  }
+
+  .chain-step:not(:last-child)::after {
+    content: '↓';
+    right: 50%;
+    bottom: -15px;
+    top: auto;
+    transform: translateX(50%);
+  }
+
+  .simulator-primary-panels .table-shell,
+  .simulator-reference-panels .table-shell {
+    max-height: 240px;
+  }
+
+  .sim-table {
+    min-width: 430px;
+  }
+
+  .sim-table th,
+  .sim-table td {
+    padding: 7px 6px;
   }
 
   .support-buttons {
