@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cache Cruncher: Cache & Memory Bits Calculator</title>
-  <meta name="description" content="Free online cache and memory bits calculator for computer architecture students. Solve cache size, blocks, sets, index/tag/offset bits, page tables, TLB tag bits, and virtual memory — all values auto-fill as you type." />
+  <title>Cache Cruncher: Cache Simulator & Bits Calculator</title>
+  <meta name="description" content="Free online Cache Simulator and bits calculator for computer architecture students. Solve cache size, blocks, sets, index/tag/offset bits, page tables, TLB tag bits, and visualize cache and memory tables as you step through addresses." />
   <meta name="keywords" content="cache calculator, cache bits calculator, computer architecture calculator, index bits, tag bits, offset bits, TLB calculator, page table calculator, virtual memory calculator, set associative cache, direct mapped cache, memory addressing" />
   <meta name="author" content="Cache Cruncher" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
@@ -15,8 +15,8 @@
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Cache Cruncher" />
-  <meta property="og:title" content="Cache Cruncher — Cache, Memory & Virtual Memory Bits Calculator" />
-  <meta property="og:description" content="Free online cache and memory bits calculator. Auto-fills index/tag/offset bits, page tables, TLB tag, and more as you type." />
+  <meta property="og:title" content="Cache Cruncher — Cache Simulator & Bits Calculator" />
+  <meta property="og:description" content="Free online Cache Simulator and bits calculator with visual cache tables, memory blocks, and auto-filled index/tag/offset math." />
   <meta property="og:url" content="https://cachecruncher.com/" />
   <meta property="og:image" content="https://cachecruncher.com/og-image.png" />
   <meta property="og:image:width" content="1200" />
@@ -25,8 +25,8 @@
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Cache Cruncher — Cache & Memory Bits Calculator" />
-  <meta name="twitter:description" content="Free interactive calculator for cache, memory, page tables, and TLB bits. Built for computer architecture students." />
+  <meta name="twitter:title" content="Cache Cruncher — Cache Simulator & Bits Calculator" />
+  <meta name="twitter:description" content="Free interactive Cache Simulator for cache, memory, page tables, and TLB bits with visual cache and memory tables." />
   <meta name="twitter:image" content="https://cachecruncher.com/og-image.png" />
 
   <link rel="stylesheet" href="/styles.css" />
@@ -106,7 +106,7 @@
       <span class="logo" aria-hidden="true">🧮</span>
       <div>
         <h1>Cache Cruncher</h1>
-        <p class="tagline">Cache · Memory · Virtual Memory bit calculator</p>
+        <p class="tagline">Cache Simulator · Memory · Virtual Memory</p>
       </div>
     </div>
     <div class="actions">
@@ -117,8 +117,9 @@
 
   <main class="container">
     <p class="hint">
-      Enter any combination of values you know — derived fields fill in
-      automatically as you type. Leave fields blank if unknown.
+      Enter any combination of values you know and Cache Cruncher will derive the
+      bit math automatically. Once the geometry is valid, the Cache Simulator can
+      step through addresses and render visual cache and memory tables.
     </p>
 
     <form id="calcForm" autocomplete="off">
@@ -261,9 +262,53 @@
       </div>
     </section>
 
+    <section class="card simulator-card">
+      <div class="simulator-head">
+        <div>
+          <h2>Cache Simulator</h2>
+          <p class="simulator-copy">Run an address trace and watch the cache table, tag/index/offset breakdown, and nearby memory blocks update.</p>
+        </div>
+        <div class="simulator-status" id="simStatus">Configure a valid cache geometry to start the simulator.</div>
+      </div>
+
+      <div class="simulator-toolbar">
+        <label class="field simulator-address-field" for="simAddress">
+          <span>Address (hex or decimal)</span>
+          <input type="text" id="simAddress" placeholder="e.g. 0x3F or 63" inputmode="text" />
+        </label>
+        <button type="button" id="simAddBtn">Access Address</button>
+        <button type="button" id="simRandomBtn" class="ghost">Random</button>
+        <button type="button" id="simResetBtn" class="ghost">Reset Trace</button>
+      </div>
+
+      <div class="simulator-panels">
+        <section class="sim-panel">
+          <h3>Instruction Breakdown</h3>
+          <div id="simBreakdown" class="bit-breakdown empty-state">No access yet.</div>
+        </section>
+
+        <section class="sim-panel">
+          <h3>Trace</h3>
+          <ol id="simTrace" class="trace-list"></ol>
+        </section>
+      </div>
+
+      <div class="simulator-panels simulator-tables">
+        <section class="sim-panel">
+          <h3>Cache Table</h3>
+          <div id="simCacheTable" class="table-shell empty-state">Cache table will appear here.</div>
+        </section>
+
+        <section class="sim-panel">
+          <h3>Memory Blocks</h3>
+          <div id="simMemoryTable" class="table-shell empty-state">Memory blocks will appear here.</div>
+        </section>
+      </div>
+    </section>
+
     <section class="card feedback-card">
       <h2>How was this tool?</h2>
-      <p class="feedback-copy">Click any emoji to tell us how the calculator feels. Counts are stored for this browser session only.</p>
+      <p class="feedback-copy">Click an emoji once per session to rate the simulator. Total counts are saved across visits.</p>
       <div class="feedback-buttons">
         <button type="button" class="feedback-btn" data-feedback="love" aria-label="Flaming heart">❤️‍🔥</button>
         <button type="button" class="feedback-btn" data-feedback="death" aria-label="Death">💀</button>
@@ -299,7 +344,7 @@
     <article class="seo-content">
       <h2>About the Cache Cruncher calculator</h2>
       <p>
-        Cache Cruncher is a free online <strong>cache and memory bits calculator</strong>
+        Cache Cruncher is a free online <strong>Cache Simulator and memory bits calculator</strong>
         designed for students taking computer architecture or computer organization
         courses. Type any combination of values you already know — cache size,
         block size, associativity, address width, page size, TLB rows — and every
@@ -309,11 +354,11 @@
         <code>cache_size</code> and <code>num_blocks</code> recomputes.
       </p>
 
-      <h3>What can you calculate?</h3>
+      <h3>What can you calculate and simulate?</h3>
       <ul>
         <li><strong>Cache configuration:</strong> number of blocks, number of sets,
           index bits, offset bits, tag bits, tag-array storage, valid-bit overhead,
-          and total cache overhead.</li>
+          total cache overhead, and a visual Cache Simulator table.</li>
         <li><strong>Memory addressing:</strong> physical and virtual address space,
           addressable memory, and the relationship between bits and bytes.</li>
         <li><strong>Virtual memory:</strong> page size, page offset bits, virtual

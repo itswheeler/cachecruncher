@@ -253,6 +253,184 @@ input.auto-filled {
 
 .results { margin-top: 24px; }
 
+.simulator-card {
+  margin-top: 24px;
+}
+
+.simulator-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.simulator-copy {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.simulator-status {
+  min-width: 220px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.simulator-status.ready {
+  color: var(--text);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.simulator-status.hit {
+  border-color: var(--good);
+}
+
+.simulator-status.miss {
+  border-color: #f59e0b;
+}
+
+.simulator-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.simulator-address-field {
+  margin: 0;
+}
+
+.simulator-address-field span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.simulator-panels {
+  display: grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.simulator-tables {
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 0;
+}
+
+.sim-panel {
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.sim-panel h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.bit-breakdown {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bit-cell {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+}
+
+.bit-cell span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.bit-cell strong {
+  display: block;
+  font-family: var(--mono);
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.trace-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.trace-item {
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.trace-item span {
+  color: var(--muted);
+}
+
+.trace-item.hit strong,
+.trace-item.hit span:first-child {
+  color: var(--good);
+}
+
+.trace-item.miss strong,
+.trace-item.miss span:first-child {
+  color: #f59e0b;
+}
+
+.trace-empty,
+.empty-state {
+  color: var(--muted);
+}
+
+.table-shell {
+  overflow: auto;
+}
+
+.sim-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sim-table th,
+.sim-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.sim-table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+}
+
+.sim-table td {
+  font-family: var(--mono);
+}
+
+.sim-table .active-row td {
+  background: var(--accent-soft);
+}
+
 .results-list {
   margin: 0;
   display: grid;
@@ -339,6 +517,13 @@ input.auto-filled {
   transform: translateY(-1px);
 }
 
+.feedback-btn:disabled,
+button:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+  transform: none;
+}
+
 .feedback-summary {
   color: var(--muted);
   font-size: 13px;
@@ -420,3 +605,51 @@ input.auto-filled {
 }
 .seo-content ul { padding-left: 20px; }
 .seo-content p { margin: 8px 0; }
+
+@media (max-width: 900px) {
+  .simulator-head,
+  .simulator-panels,
+  .simulator-tables {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .simulator-head {
+    display: block;
+  }
+
+  .simulator-status {
+    margin-top: 12px;
+    min-width: 0;
+  }
+
+  .simulator-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .bit-breakdown {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .simulator-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .bit-breakdown {
+    grid-template-columns: 1fr;
+  }
+
+  .sim-panel {
+    padding: 14px;
+  }
+
+  .support-buttons {
+    flex-direction: column;
+  }
+
+  .small-btn {
+    width: 100%;
+  }
+}

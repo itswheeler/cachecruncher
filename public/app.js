@@ -38,6 +38,16 @@
     { id: 'death', emoji: '💀', label: 'Death' },
   ];
   const feedbackCounts = Object.fromEntries(FEEDBACK_TYPES.map(({ id }) => [id, 0]));
+  const SIMULATOR_TRACE_LIMIT = 12;
+
+  const simulator = {
+    configKey: '',
+    lines: [],
+    replacement: [],
+    trace: [],
+    accessCount: 0,
+    lastAccess: null,
+  };
 
   // ─────────────────────────────── state ───────────────────────────────────
   const state = {};      // id -> 'empty' | 'user' | 'auto'
@@ -109,6 +119,270 @@
 
   function formatFeedbackSummary() {
     return FEEDBACK_TYPES.map(({ id, emoji }) => `${emoji} ${feedbackCounts[id]}`).join(' · ');
+  }
+
+  function intValue(value) {
+    if (!Number.isFinite(value)) return null;
+    const rounded = Math.round(value);
+    return Math.abs(value - rounded) < 1e-9 ? rounded : null;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function toHex(value) {
+    return `0x${Math.max(0, value).toString(16).toUpperCase()}`;
+  }
+
+  function isUsableSimulatorConfig(v) {
+    const blockSize = intValue(v.block_size);
+    const numSets = intValue(v.num_sets);
+    const associativity = intValue(v.associativity);
+    const addressSize = intValue(v.address_size);
+    const numBlocks = intValue(v.num_blocks);
+    if (!blockSize || !numSets || !associativity || !addressSize || !numBlocks) return false;
+    if (!isPow2(blockSize) || !isPow2(numSets)) return false;
+    if (numBlocks !== numSets * associativity) return false;
+    return addressSize > 0;
+  }
+
+  function getSimulatorConfig(v) {
+    if (!isUsableSimulatorConfig(v)) return null;
+    return {
+      blockSize: intValue(v.block_size),
+      numSets: intValue(v.num_sets),
+      associativity: intValue(v.associativity),
+      addressSize: intValue(v.address_size),
+      numBlocks: intValue(v.num_blocks),
+      offsetBits: intValue(v.offset_bits) ?? ilog2(intValue(v.block_size)),
+      indexBits: intValue(v.index_bits) ?? ilog2(intValue(v.num_sets)),
+      tagBits: intValue(v.tag_bits),
+      memoryBytes: intValue(v.addressable_memory) ?? (2 ** intValue(v.address_size)),
+    };
+  }
+
+  function getConfigKey(config) {
+    return JSON.stringify(config);
+  }
+
+  function ensureSimulator(config) {
+    const key = getConfigKey(config);
+    if (simulator.configKey === key) return;
+    simulator.configKey = key;
+    simulator.lines = Array.from({ length: config.numSets }, () =>
+      Array.from({ length: config.associativity }, (_, way) => ({
+        way,
+        valid: false,
+        tag: null,
+        blockNumber: null,
+        baseAddress: null,
+        lastUsed: 0,
+      })),
+    );
+    simulator.replacement = Array.from({ length: config.numSets }, () => 0);
+    simulator.trace = [];
+    simulator.accessCount = 0;
+    simulator.lastAccess = null;
+  }
+
+  function resetSimulator() {
+    simulator.configKey = '';
+    simulator.lines = [];
+    simulator.replacement = [];
+    simulator.trace = [];
+    simulator.accessCount = 0;
+    simulator.lastAccess = null;
+  }
+
+  function clearSimulatorTrace(config) {
+    if (!config) {
+      resetSimulator();
+      return;
+    }
+    simulator.configKey = '';
+    ensureSimulator(config);
+  }
+
+  function parseAddressInput(raw, config) {
+    const text = raw.trim();
+    if (!text) return null;
+    const value = /^0x/i.test(text) ? Number.parseInt(text, 16) : Number.parseInt(text, 10);
+    if (!Number.isFinite(value) || value < 0) return null;
+    const maxAddress = (2 ** config.addressSize) - 1;
+    if (value > maxAddress) return null;
+    return value;
+  }
+
+  function simulateAccess(address, config) {
+    ensureSimulator(config);
+    const blockNumber = Math.floor(address / config.blockSize);
+    const setIndex = blockNumber % config.numSets;
+    const tag = Math.floor(blockNumber / config.numSets);
+    const offset = address % config.blockSize;
+    const set = simulator.lines[setIndex];
+    let line = set.find((entry) => entry.valid && entry.tag === tag);
+    let outcome = 'Hit';
+    if (!line) {
+      outcome = 'Miss';
+      line = set.find((entry) => !entry.valid);
+      if (!line) {
+        line = set[simulator.replacement[setIndex] % set.length];
+        simulator.replacement[setIndex] = (simulator.replacement[setIndex] + 1) % set.length;
+      }
+      line.valid = true;
+      line.tag = tag;
+      line.blockNumber = blockNumber;
+      line.baseAddress = blockNumber * config.blockSize;
+    }
+    simulator.accessCount += 1;
+    line.lastUsed = simulator.accessCount;
+    const access = {
+      address,
+      blockNumber,
+      setIndex,
+      tag,
+      offset,
+      way: line.way,
+      outcome,
+      baseAddress: blockNumber * config.blockSize,
+      bytes: Array.from({ length: Math.min(config.blockSize, 8) }, (_, index) => blockNumber * config.blockSize + index),
+    };
+    simulator.lastAccess = access;
+    simulator.trace.unshift(access);
+    simulator.trace = simulator.trace.slice(0, SIMULATOR_TRACE_LIMIT);
+    return access;
+  }
+
+  function renderBreakdown(access, config) {
+    const el = $('simBreakdown');
+    if (!access || !config) {
+      el.className = 'bit-breakdown empty-state';
+      el.textContent = 'No access yet.';
+      return;
+    }
+    const binary = access.address.toString(2).padStart(config.addressSize, '0');
+    const tagBits = binary.slice(0, config.tagBits || 0) || '—';
+    const indexBits = binary.slice(config.tagBits || 0, (config.tagBits || 0) + config.indexBits) || '—';
+    const offsetBits = binary.slice(binary.length - config.offsetBits) || '—';
+    el.className = 'bit-breakdown';
+    el.innerHTML = [
+      ['Tag', tagBits],
+      ['Index', indexBits],
+      ['Offset', offsetBits],
+      ['Result', `${access.outcome} in set ${access.setIndex}, way ${access.way}`],
+    ].map(([label, value]) => `<div class="bit-cell"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
+  }
+
+  function renderTrace() {
+    const el = $('simTrace');
+    if (!simulator.trace.length) {
+      el.innerHTML = '<li class="trace-empty">No addresses accessed yet.</li>';
+      return;
+    }
+    el.innerHTML = simulator.trace.map((access) => `
+      <li class="trace-item ${access.outcome.toLowerCase()}">
+        <div><strong>${escapeHtml(toHex(access.address))}</strong> <span>${escapeHtml(access.outcome)}</span></div>
+        <div>set ${access.setIndex} · way ${access.way} · tag ${escapeHtml(toHex(access.tag))} · block ${access.blockNumber}</div>
+      </li>
+    `).join('');
+  }
+
+  function renderCacheTable(config) {
+    const el = $('simCacheTable');
+    if (!config) {
+      el.className = 'table-shell empty-state';
+      el.textContent = 'Cache table will appear here.';
+      return;
+    }
+    const headers = ['Set', 'Way', 'Valid', 'Tag', 'Block', 'Base Address'];
+    const rows = [];
+    simulator.lines.forEach((set, setIndex) => {
+      set.forEach((line) => {
+        const current = simulator.lastAccess && simulator.lastAccess.setIndex === setIndex && simulator.lastAccess.way === line.way;
+        rows.push(`
+          <tr class="${current ? 'active-row' : ''}">
+            <td>${setIndex}</td>
+            <td>${line.way}</td>
+            <td>${line.valid ? '1' : '0'}</td>
+            <td>${line.valid ? escapeHtml(toHex(line.tag)) : '—'}</td>
+            <td>${line.valid ? line.blockNumber : '—'}</td>
+            <td>${line.valid ? escapeHtml(toHex(line.baseAddress)) : '—'}</td>
+          </tr>
+        `);
+      });
+    });
+    el.className = 'table-shell';
+    el.innerHTML = `<table class="sim-table"><thead><tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  }
+
+  function renderMemoryTable(config) {
+    const el = $('simMemoryTable');
+    if (!config || !simulator.lastAccess) {
+      el.className = 'table-shell empty-state';
+      el.textContent = 'Memory blocks will appear here.';
+      return;
+    }
+    const currentBlock = simulator.lastAccess.blockNumber;
+    const maxBlocks = Math.max(1, Math.floor(config.memoryBytes / config.blockSize));
+    const startBlock = Math.max(0, currentBlock - 2);
+    const endBlock = Math.min(maxBlocks - 1, currentBlock + 2);
+    const rows = [];
+    for (let block = startBlock; block <= endBlock; block += 1) {
+      const base = block * config.blockSize;
+      const bytes = Array.from({ length: Math.min(config.blockSize, 8) }, (_, index) => toHex(base + index)).join(', ');
+      rows.push(`
+        <tr class="${block === currentBlock ? 'active-row' : ''}">
+          <td>${block}</td>
+          <td>${escapeHtml(toHex(base))}</td>
+          <td>${escapeHtml(toHex(base + config.blockSize - 1))}</td>
+          <td>${escapeHtml(bytes)}${config.blockSize > 8 ? ', …' : ''}</td>
+        </tr>
+      `);
+    }
+    el.className = 'table-shell';
+    el.innerHTML = `<table class="sim-table"><thead><tr><th>Block</th><th>Start</th><th>End</th><th>Bytes</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  }
+
+  function renderSimulator(v) {
+    const config = getSimulatorConfig(v);
+    const status = $('simStatus');
+    const addBtn = $('simAddBtn');
+    const randomBtn = $('simRandomBtn');
+    const resetBtn = $('simResetBtn');
+    const simInput = $('simAddress');
+
+    if (!config) {
+      resetSimulator();
+      status.textContent = 'Configure power-of-two block size and set count, plus address bits, to unlock the Cache Simulator.';
+      status.className = 'simulator-status';
+      addBtn.disabled = true;
+      randomBtn.disabled = true;
+      resetBtn.disabled = true;
+      simInput.disabled = true;
+      renderBreakdown(null, null);
+      renderTrace();
+      renderCacheTable(null);
+      renderMemoryTable(null);
+      return;
+    }
+
+    ensureSimulator(config);
+    status.textContent = `${config.associativity}-way cache · ${config.numSets} sets · ${config.blockSize}-byte blocks`;
+    status.className = 'simulator-status ready';
+    addBtn.disabled = false;
+    randomBtn.disabled = false;
+    resetBtn.disabled = false;
+    simInput.disabled = false;
+    renderBreakdown(simulator.lastAccess, config);
+    renderTrace();
+    renderCacheTable(config);
+    renderMemoryTable(config);
   }
 
   function updateFeedbackUI() {
@@ -393,6 +667,7 @@
       // Recompute "extras" (display-only) from the now-coherent vals.
       const e = deriveExtras(v);
       renderResults(v, e);
+      renderSimulator(v);
     });
   }
 
@@ -438,6 +713,15 @@
 
     $('clearBtn').addEventListener('click', clearAll);
     $('resetBtn').addEventListener('click', clearAll);
+    $('simAddBtn').addEventListener('click', handleSimulatorAccess);
+    $('simRandomBtn').addEventListener('click', handleRandomAccess);
+    $('simResetBtn').addEventListener('click', handleResetTrace);
+    $('simAddress').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleSimulatorAccess();
+      }
+    });
 
     document.querySelectorAll('.feedback-btn').forEach((button) => {
       button.addEventListener('click', () => {
@@ -478,7 +762,45 @@
       state[id] = 'empty';
       editedAt[id] = 0;
     }
+    resetSimulator();
+    $('simAddress').value = '';
     recompute();
+  }
+
+  function getCurrentSimulatorConfig() {
+    return getSimulatorConfig(solve());
+  }
+
+  function handleSimulatorAccess() {
+    const config = getCurrentSimulatorConfig();
+    if (!config) return;
+    const input = $('simAddress');
+    const address = parseAddressInput(input.value, config);
+    if (address == null) {
+      $('simStatus').textContent = `Enter an address between 0 and ${toHex((2 ** config.addressSize) - 1)}.`;
+      $('simStatus').className = 'simulator-status';
+      return;
+    }
+    simulateAccess(address, config);
+    $('simStatus').textContent = `Last access ${toHex(address)} → ${simulator.lastAccess.outcome} in set ${simulator.lastAccess.setIndex}, way ${simulator.lastAccess.way}.`;
+    $('simStatus').className = `simulator-status ready ${simulator.lastAccess.outcome.toLowerCase()}`;
+    renderSimulator(readAll());
+  }
+
+  function handleRandomAccess() {
+    const config = getCurrentSimulatorConfig();
+    if (!config) return;
+    const maxAddress = (2 ** config.addressSize) - 1;
+    const random = Math.floor(Math.random() * (maxAddress + 1));
+    $('simAddress').value = toHex(random);
+    handleSimulatorAccess();
+  }
+
+  function handleResetTrace() {
+    const config = getCurrentSimulatorConfig();
+    $('simAddress').value = '';
+    clearSimulatorTrace(config);
+    renderSimulator(readAll());
   }
 
   document.addEventListener('DOMContentLoaded', () => {
