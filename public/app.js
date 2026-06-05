@@ -32,7 +32,6 @@
   };
 
   const SESSION_VOTED_KEY = 'cachecruncher-feedback-voted';
-    scrollActiveRowIntoView(el);
   const SERVER_FEEDBACK_URL = '/api/feedback';
   const FEEDBACK_TYPES = [
     { id: 'love', emoji: '❤️‍🔥', label: 'Flaming heart' },
