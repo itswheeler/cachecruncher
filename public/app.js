@@ -75,9 +75,17 @@
   function scrollActiveRowIntoView(container) {
     if (!container) return;
     const row = container.querySelector('tr.active-row');
-    if (!row || typeof row.scrollIntoView !== 'function') return;
+    if (!row) return;
     requestAnimationFrame(() => {
-      row.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+      const containerRect = container.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+      const currentTop = container.scrollTop;
+      const rowTop = row.offsetTop;
+      const centeredTop = rowTop - Math.max(0, (container.clientHeight - row.offsetHeight) / 2);
+      const rowVisibleTop = rowRect.top >= containerRect.top;
+      const rowVisibleBottom = rowRect.bottom <= containerRect.bottom;
+      if (rowVisibleTop && rowVisibleBottom) return;
+      container.scrollTo({ top: Math.max(0, centeredTop), behavior: 'smooth' });
     });
   }
 
