@@ -72,6 +72,15 @@
 
   const $ = (id) => document.getElementById(id);
 
+  function scrollActiveRowIntoView(container) {
+    if (!container) return;
+    const row = container.querySelector('tr.active-row');
+    if (!row || typeof row.scrollIntoView !== 'function') return;
+    requestAnimationFrame(() => {
+      row.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    });
+  }
+
   function readField(id) {
     const f = FIELDS[id];
     const el = $(id);
@@ -516,6 +525,7 @@
     }
     el.className = 'table-shell';
     el.innerHTML = `<table class="sim-table"><thead><tr><th>VPN</th><th>PPN</th><th>Base</th><th>Status</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+    scrollActiveRowIntoView(el);
   }
 
   function renderCacheTable(config) {
@@ -578,6 +588,7 @@
     }
     el.className = 'table-shell';
     el.innerHTML = `<table class="sim-table"><thead><tr><th>Block</th><th>Start</th><th>End</th><th>Bytes</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+    scrollActiveRowIntoView(el);
   }
 
   function renderSimulator(v) {
