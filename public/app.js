@@ -154,6 +154,16 @@
 
   function getSimulatorConfig(v) {
     if (!isUsableSimulatorConfig(v)) return null;
+    const pageSize = intValue(v.pagesize);
+    const virtualAddressSize = intValue(v.virtual_address_size);
+    const tlbRows = intValue(v.tlb_rows);
+    const pageOffsetBits = pageSize && isPow2(pageSize) ? ilog2(pageSize) : null;
+    const physicalPages = pageSize && intValue(v.addressable_memory)
+      ? intValue(v.addressable_memory) / pageSize
+      : null;
+    const vpnBits = virtualAddressSize != null && pageOffsetBits != null
+      ? virtualAddressSize - pageOffsetBits
+      : null;
     return {
       blockSize: intValue(v.block_size),
       numSets: intValue(v.num_sets),
@@ -164,7 +174,24 @@
       indexBits: intValue(v.index_bits) ?? ilog2(intValue(v.num_sets)),
       tagBits: intValue(v.tag_bits),
       memoryBytes: intValue(v.addressable_memory) ?? (2 ** intValue(v.address_size)),
+      pageSize,
+      pageOffsetBits,
+      physicalPages: intValue(physicalPages),
+      virtualAddressSize,
+      vpnBits: intValue(vpnBits),
+      tlbRows,
     };
+  }
+
+  function supportsVirtualTranslation(config) {
+    return Boolean(
+      config
+      && config.pageSize
+      && config.pageOffsetBits != null
+      && config.physicalPages
+      && config.virtualAddressSize
+      && config.vpnBits != null,
+    );
   }
 
   function getConfigKey(config) {
@@ -209,17 +236,46 @@
     ensureSimulator(config);
   }
 
-  function parseAddressInput(raw, config) {
+  function parseAddressInput(raw, bitWidth) {
     const text = raw.trim();
     if (!text) return null;
     const value = /^0x/i.test(text) ? Number.parseInt(text, 16) : Number.parseInt(text, 10);
     if (!Number.isFinite(value) || value < 0) return null;
-    const maxAddress = (2 ** config.addressSize) - 1;
+    const maxAddress = (2 ** bitWidth) - 1;
     if (value > maxAddress) return null;
     return value;
   }
 
-  function simulateAccess(address, config) {
+  function resolveAccess(inputAddress, mode, config) {
+    if (mode === 'virtual') {
+      const vpn = Math.floor(inputAddress / config.pageSize);
+      const pageOffset = inputAddress % config.pageSize;
+      const physicalPage = vpn % config.physicalPages;
+      const physicalAddress = (physicalPage * config.pageSize) + pageOffset;
+      const tlbIndex = config.tlbRows && isPow2(config.tlbRows) ? vpn % config.tlbRows : null;
+      const tlbTag = config.tlbRows && isPow2(config.tlbRows) ? Math.floor(vpn / config.tlbRows) : null;
+      return {
+        mode,
+        inputAddress,
+        virtualAddress: inputAddress,
+        vpn,
+        pageOffset,
+        physicalPage,
+        physicalAddress,
+        tlbIndex,
+        tlbTag,
+        translationNote: `Demo translation uses VPN mod physical pages (${config.physicalPages}) to choose a physical frame.`,
+      };
+    }
+
+    return {
+      mode: 'physical',
+      inputAddress,
+      physicalAddress: inputAddress,
+    };
+  }
+
+  function simulateAccess(address, config, translation) {
     ensureSimulator(config);
     const blockNumber = Math.floor(address / config.blockSize);
     const setIndex = blockNumber % config.numSets;
@@ -244,6 +300,15 @@
     line.lastUsed = simulator.accessCount;
     const access = {
       address,
+      inputAddress: translation?.inputAddress ?? address,
+      mode: translation?.mode ?? 'physical',
+      virtualAddress: translation?.virtualAddress ?? null,
+      vpn: translation?.vpn ?? null,
+      pageOffset: translation?.pageOffset ?? null,
+      physicalPage: translation?.physicalPage ?? null,
+      tlbIndex: translation?.tlbIndex ?? null,
+      tlbTag: translation?.tlbTag ?? null,
+      translationNote: translation?.translationNote ?? '',
       blockNumber,
       setIndex,
       tag,
@@ -257,6 +322,37 @@
     simulator.trace.unshift(access);
     simulator.trace = simulator.trace.slice(0, SIMULATOR_TRACE_LIMIT);
     return access;
+  }
+
+  function renderTranslation(access, config) {
+    const el = $('simTranslation');
+    if (!access || !config) {
+      el.className = 'bit-breakdown empty-state';
+      el.textContent = 'No address translation yet.';
+      return;
+    }
+
+    const cells = access.mode === 'virtual'
+      ? [
+          ['Virtual', toHex(access.virtualAddress)],
+          ['VPN', String(access.vpn)],
+          ['Page Offset', String(access.pageOffset)],
+          ['Physical Frame', String(access.physicalPage)],
+          ['Physical', toHex(access.address)],
+          ['TLB', access.tlbIndex != null && access.tlbTag != null ? `index ${access.tlbIndex} · tag ${access.tlbTag}` : 'Not configured'],
+        ]
+      : [
+          ['Physical', toHex(access.address)],
+          ['Block', String(access.blockNumber)],
+          ['Set', String(access.setIndex)],
+          ['Offset', String(access.offset)],
+        ];
+
+    el.className = 'bit-breakdown translation-grid';
+    el.innerHTML = cells.map(([label, value]) => `<div class="bit-cell"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
+    if (access.translationNote) {
+      el.innerHTML += `<div class="translation-note">${escapeHtml(access.translationNote)}</div>`;
+    }
   }
 
   function renderBreakdown(access, config) {
@@ -287,7 +383,7 @@
     }
     el.innerHTML = simulator.trace.map((access) => `
       <li class="trace-item ${access.outcome.toLowerCase()}">
-        <div><strong>${escapeHtml(toHex(access.address))}</strong> <span>${escapeHtml(access.outcome)}</span></div>
+        <div><strong>${escapeHtml(access.mode === 'virtual' ? `${toHex(access.virtualAddress)} → ${toHex(access.address)}` : toHex(access.address))}</strong> <span>${escapeHtml(access.outcome)}</span></div>
         <div>set ${access.setIndex} · way ${access.way} · tag ${escapeHtml(toHex(access.tag))} · block ${access.blockNumber}</div>
       </li>
     `).join('');
@@ -372,19 +468,29 @@
       resetBtn.disabled = true;
       simInput.disabled = true;
       renderBreakdown(null, null);
+      renderTranslation(null, null);
       renderTrace();
       renderCacheTable(null);
       renderMemoryTable(null);
       return;
     }
 
+    const modeEl = $('simAddressType');
+    const virtualSupported = supportsVirtualTranslation(config);
+    modeEl.querySelector('option[value="virtual"]').disabled = !virtualSupported;
+    if (!virtualSupported && modeEl.value === 'virtual') {
+      modeEl.value = 'physical';
+    }
+    const mode = modeEl.value;
+
     ensureSimulator(config);
-    status.textContent = `${config.associativity}-way cache · ${config.numSets} sets · ${config.blockSize}-byte blocks`;
+    status.textContent = `${config.associativity}-way cache · ${config.numSets} sets · ${config.blockSize}-byte blocks${mode === 'virtual' ? ' · virtual translation on' : ''}`;
     status.className = 'simulator-status ready';
     addBtn.disabled = false;
     randomBtn.disabled = false;
     resetBtn.disabled = false;
     simInput.disabled = false;
+    renderTranslation(simulator.lastAccess, config);
     renderBreakdown(simulator.lastAccess, config);
     renderTrace();
     renderCacheTable(config);
@@ -722,6 +828,10 @@
     $('simAddBtn').addEventListener('click', handleSimulatorAccess);
     $('simRandomBtn').addEventListener('click', handleRandomAccess);
     $('simResetBtn').addEventListener('click', handleResetTrace);
+    $('simAddressType').addEventListener('change', () => {
+      $('simAddress').value = '';
+      renderSimulator(readAll());
+    });
     $('simAddress').addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
@@ -770,6 +880,7 @@
     }
     resetSimulator();
     $('simAddress').value = '';
+    $('simAddressType').value = 'physical';
     recompute();
   }
 
@@ -781,14 +892,17 @@
     const config = getCurrentSimulatorConfig();
     if (!config) return;
     const input = $('simAddress');
-    const address = parseAddressInput(input.value, config);
+    const mode = $('simAddressType').value;
+    const bitWidth = mode === 'virtual' ? config.virtualAddressSize : config.addressSize;
+    const address = parseAddressInput(input.value, bitWidth);
     if (address == null) {
-      $('simStatus').textContent = `Enter an address between 0 and ${toHex((2 ** config.addressSize) - 1)}.`;
+      $('simStatus').textContent = `Enter an address between 0 and ${toHex((2 ** bitWidth) - 1)}.`;
       $('simStatus').className = 'simulator-status';
       return;
     }
-    simulateAccess(address, config);
-    $('simStatus').textContent = `Last access ${toHex(address)} → ${simulator.lastAccess.outcome} in set ${simulator.lastAccess.setIndex}, way ${simulator.lastAccess.way}.`;
+    const translation = resolveAccess(address, mode, config);
+    simulateAccess(translation.physicalAddress, config, translation);
+    $('simStatus').textContent = `Last access ${mode === 'virtual' ? `${toHex(address)} → ${toHex(translation.physicalAddress)}` : toHex(address)} → ${simulator.lastAccess.outcome} in set ${simulator.lastAccess.setIndex}, way ${simulator.lastAccess.way}.`;
     $('simStatus').className = `simulator-status ready ${simulator.lastAccess.outcome.toLowerCase()}`;
     renderSimulator(readAll());
   }
@@ -796,7 +910,9 @@
   function handleRandomAccess() {
     const config = getCurrentSimulatorConfig();
     if (!config) return;
-    const maxAddress = (2 ** config.addressSize) - 1;
+    const mode = $('simAddressType').value;
+    const bitWidth = mode === 'virtual' ? config.virtualAddressSize : config.addressSize;
+    const maxAddress = (2 ** bitWidth) - 1;
     const random = Math.floor(Math.random() * (maxAddress + 1));
     $('simAddress').value = toHex(random);
     handleSimulatorAccess();

@@ -82,5 +82,19 @@ function access(simulator, address, config) {
   assert(assocSim.lines[0].every((line) => line.valid), 'two-way set should be full after two fills');
   assert(c.outcome === 'Miss', 'third unique block in same set should miss and replace');
 
+  const virtualConfig = {
+    pageSize: 16 * 1024,
+    physicalPages: 2,
+  };
+  const virtualAddress = 0x4500;
+  const vpn = Math.floor(virtualAddress / virtualConfig.pageSize);
+  const pageOffset = virtualAddress % virtualConfig.pageSize;
+  const physicalPage = vpn % virtualConfig.physicalPages;
+  const physicalAddress = (physicalPage * virtualConfig.pageSize) + pageOffset;
+  assert(vpn === 1, '0x4500 should translate to VPN 1 with 16KB pages');
+  assert(pageOffset === 0x500, '0x4500 should have page offset 0x500');
+  assert(physicalPage === 1, 'VPN 1 should map to physical page 1 in the demo translation');
+  assert(physicalAddress === 0x4500, 'demo translation should preserve 0x4500 for VPN 1 with two physical pages');
+
   console.log('simulator mapping checks passed');
 })();

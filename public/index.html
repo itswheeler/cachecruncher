@@ -277,22 +277,34 @@
           <span>Address (hex or decimal)</span>
           <input type="text" id="simAddress" placeholder="e.g. 0x3F or 63" inputmode="text" />
         </label>
+        <label class="field simulator-mode-field" for="simAddressType">
+          <span>Address Space</span>
+          <select id="simAddressType">
+            <option value="physical">Physical Address</option>
+            <option value="virtual">Virtual Address</option>
+          </select>
+        </label>
         <button type="button" id="simAddBtn">Access Address</button>
         <button type="button" id="simRandomBtn" class="ghost">Random</button>
         <button type="button" id="simResetBtn" class="ghost">Reset Trace</button>
       </div>
 
-      <div class="simulator-panels">
+      <div class="simulator-panels simulator-summary-panels">
+        <section class="sim-panel">
+          <h3>Address Translation</h3>
+          <div id="simTranslation" class="bit-breakdown empty-state">No address translation yet.</div>
+        </section>
+
         <section class="sim-panel">
           <h3>Instruction Breakdown</h3>
           <div id="simBreakdown" class="bit-breakdown empty-state">No access yet.</div>
         </section>
-
-        <section class="sim-panel">
-          <h3>Trace</h3>
-          <ol id="simTrace" class="trace-list"></ol>
-        </section>
       </div>
+
+      <section class="sim-panel sim-trace-panel">
+        <h3>Trace</h3>
+        <ol id="simTrace" class="trace-list"></ol>
+      </section>
 
       <div class="simulator-panels simulator-tables">
         <section class="sim-panel">
