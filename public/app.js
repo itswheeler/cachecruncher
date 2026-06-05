@@ -32,6 +32,7 @@
   };
 
   const SESSION_VOTED_KEY = 'cachecruncher-feedback-voted';
+    scrollActiveRowIntoView(el);
   const SERVER_FEEDBACK_URL = '/api/feedback';
   const FEEDBACK_TYPES = [
     { id: 'love', emoji: '❤️‍🔥', label: 'Flaming heart' },
@@ -560,6 +561,7 @@
     });
     el.className = 'table-shell';
     el.innerHTML = `<table class="sim-table"><thead><tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+    scrollActiveRowIntoView(el);
   }
 
   function renderMemoryTable(config) {
