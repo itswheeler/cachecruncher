@@ -77,15 +77,12 @@
     const row = container.querySelector('tr.active-row');
     if (!row) return;
     requestAnimationFrame(() => {
-      const containerRect = container.getBoundingClientRect();
-      const rowRect = row.getBoundingClientRect();
-      const currentTop = container.scrollTop;
-      const rowTop = row.offsetTop;
-      const centeredTop = rowTop - Math.max(0, (container.clientHeight - row.offsetHeight) / 2);
-      const rowVisibleTop = rowRect.top >= containerRect.top;
-      const rowVisibleBottom = rowRect.bottom <= containerRect.bottom;
-      if (rowVisibleTop && rowVisibleBottom) return;
-      container.scrollTo({ top: Math.max(0, centeredTop), behavior: 'smooth' });
+      const pageX = window.scrollX;
+      const pageY = window.scrollY;
+      const centeredTop = row.offsetTop - Math.max(0, (container.clientHeight - row.offsetHeight) / 2);
+      const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+      container.scrollTop = Math.min(maxTop, Math.max(0, centeredTop));
+      window.scrollTo(pageX, pageY);
     });
   }
 
@@ -501,6 +498,7 @@
     }).join('');
     el.className = 'table-shell';
     el.innerHTML = `<table class="sim-table"><thead><tr><th>Row</th><th>V</th><th>TLB Tag</th><th>VPN</th><th>PPN</th></tr></thead><tbody>${rows}</tbody></table>`;
+    scrollActiveRowIntoView(el);
   }
 
   function renderPageTable(config) {
@@ -533,7 +531,6 @@
     }
     el.className = 'table-shell';
     el.innerHTML = `<table class="sim-table"><thead><tr><th>VPN</th><th>PPN</th><th>Base</th><th>Status</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
-    scrollActiveRowIntoView(el);
   }
 
   function renderCacheTable(config) {
@@ -597,7 +594,6 @@
     }
     el.className = 'table-shell';
     el.innerHTML = `<table class="sim-table"><thead><tr><th>Block</th><th>Start</th><th>End</th><th>Bytes</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
-    scrollActiveRowIntoView(el);
   }
 
   function renderSimulator(v) {
