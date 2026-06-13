@@ -32,6 +32,7 @@
   };
 
   const SESSION_VOTED_KEY = 'cachecruncher-feedback-voted';
+  const FEEDBACK_TOTALS_CACHE_KEY = 'cachecruncher-feedback-totals';
   const SERVER_FEEDBACK_URL = '/api/feedback';
   const FEEDBACK_TYPES = [
     { id: 'love', emoji: '❤️‍🔥', label: 'Flaming heart' },
@@ -655,6 +656,33 @@
     summary.textContent = `${voteText} Total: ${formatFeedbackSummary()}`;
   }
 
+  function saveFeedbackTotalsToCache() {
+    try {
+      localStorage.setItem(FEEDBACK_TOTALS_CACHE_KEY, JSON.stringify(feedbackCounts));
+    } catch {
+      // ignore localStorage errors in private mode or restricted contexts
+    }
+  }
+
+  function loadFeedbackTotalsFromCache() {
+    try {
+      const raw = localStorage.getItem(FEEDBACK_TOTALS_CACHE_KEY);
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      let applied = false;
+      for (const { id } of FEEDBACK_TYPES) {
+        const n = Number(data?.[id]);
+        if (Number.isFinite(n) && n >= 0) {
+          feedbackCounts[id] = n;
+          applied = true;
+        }
+      }
+      return applied;
+    } catch {
+      return false;
+    }
+  }
+
   function disableFeedbackButtons() {
     document.querySelectorAll('.feedback-btn').forEach((button) => {
       button.disabled = true;
@@ -664,14 +692,19 @@
 
   async function fetchFeedbackTotals() {
     try {
-      const res = await fetch(SERVER_FEEDBACK_URL, { cache: 'no-store' });
+      const url = new URL(SERVER_FEEDBACK_URL, window.location.origin);
+      url.searchParams.set('t', String(Date.now()));
+      const res = await fetch(url.toString(), { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to load counts');
       const data = await res.json();
       for (const { id } of FEEDBACK_TYPES) {
-        feedbackCounts[id] = Number.isFinite(data?.[id]) ? data[id] : 0;
+        const n = Number(data?.[id]);
+        feedbackCounts[id] = Number.isFinite(n) && n >= 0 ? n : 0;
       }
+      saveFeedbackTotalsToCache();
     } catch {
-      // keep fallback counts if server is unavailable
+      // Fallback to last known totals so counts survive browser sessions.
+      loadFeedbackTotalsFromCache();
     }
     updateFeedbackUI();
   }
@@ -689,8 +722,10 @@
       if (!res.ok) throw new Error('Failed to submit vote');
       const data = await res.json();
       for (const { id: typeId } of FEEDBACK_TYPES) {
-        feedbackCounts[typeId] = Number.isFinite(data?.[typeId]) ? data[typeId] : feedbackCounts[typeId];
+        const n = Number(data?.[typeId]);
+        feedbackCounts[typeId] = Number.isFinite(n) && n >= 0 ? n : feedbackCounts[typeId];
       }
+      saveFeedbackTotalsToCache();
       sessionStorage.setItem(SESSION_VOTED_KEY, id);
       disableFeedbackButtons();
     } catch {
