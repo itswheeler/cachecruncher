@@ -39,6 +39,7 @@
     { id: 'death', emoji: '💀', label: 'Death' },
   ];
   const feedbackCounts = Object.fromEntries(FEEDBACK_TYPES.map(({ id }) => [id, 0]));
+  let feedbackTotal = 0;
   const SIMULATOR_TRACE_LIMIT = 12;
 
   const simulator = {
@@ -134,7 +135,7 @@
   }
 
   function formatFeedbackSummary() {
-    return FEEDBACK_TYPES.map(({ id, emoji }) => `${emoji} ${feedbackCounts[id]}`).join(' · ');
+    return `${feedbackTotal} interactions · ${FEEDBACK_TYPES.map(({ id, emoji }) => `${emoji} ${feedbackCounts[id]}`).join(' · ')}`;
   }
 
   function intValue(value) {
@@ -658,7 +659,10 @@
 
   function saveFeedbackTotalsToCache() {
     try {
-      localStorage.setItem(FEEDBACK_TOTALS_CACHE_KEY, JSON.stringify(feedbackCounts));
+      localStorage.setItem(FEEDBACK_TOTALS_CACHE_KEY, JSON.stringify({
+        ...feedbackCounts,
+        total: feedbackTotal,
+      }));
     } catch {
       // ignore localStorage errors in private mode or restricted contexts
     }
@@ -676,6 +680,13 @@
           feedbackCounts[id] = n;
           applied = true;
         }
+      }
+      const total = Number(data?.total);
+      if (Number.isFinite(total) && total >= 0) {
+        feedbackTotal = total;
+        applied = true;
+      } else {
+        feedbackTotal = FEEDBACK_TYPES.reduce((sum, { id }) => sum + feedbackCounts[id], 0);
       }
       return applied;
     } catch {
@@ -701,10 +712,16 @@
         const n = Number(data?.[id]);
         feedbackCounts[id] = Number.isFinite(n) && n >= 0 ? n : 0;
       }
+      const total = Number(data?.total);
+      feedbackTotal = Number.isFinite(total) && total >= 0
+        ? total
+        : FEEDBACK_TYPES.reduce((sum, { id }) => sum + feedbackCounts[id], 0);
       saveFeedbackTotalsToCache();
     } catch {
       // Fallback to last known totals so counts survive browser sessions.
-      loadFeedbackTotalsFromCache();
+      if (!loadFeedbackTotalsFromCache()) {
+        feedbackTotal = FEEDBACK_TYPES.reduce((sum, { id }) => sum + feedbackCounts[id], 0);
+      }
     }
     updateFeedbackUI();
   }
@@ -725,6 +742,10 @@
         const n = Number(data?.[typeId]);
         feedbackCounts[typeId] = Number.isFinite(n) && n >= 0 ? n : feedbackCounts[typeId];
       }
+      const total = Number(data?.total);
+      feedbackTotal = Number.isFinite(total) && total >= 0
+        ? total
+        : FEEDBACK_TYPES.reduce((sum, { id: typeId }) => sum + feedbackCounts[typeId], 0);
       saveFeedbackTotalsToCache();
       sessionStorage.setItem(SESSION_VOTED_KEY, id);
       disableFeedbackButtons();

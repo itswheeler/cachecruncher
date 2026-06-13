@@ -28,19 +28,30 @@ async function handleFeedback(request, env) {
       return new Response('Invalid feedback type', { status: 400 });
     }
 
-    const key = type;
-    const current = Number(await env.cachecruncher_feedback.get(key) || 0);
-    await env.cachecruncher_feedback.put(key, String(current + 1));
-    return jsonResponse(await readCounts(env));
+    const counts = await readCounts(env);
+    counts[type] += 1;
+    counts.total += 1;
+    await env.cachecruncher_feedback.put(type, String(counts[type]));
+    await env.cachecruncher_feedback.put('total', String(counts.total));
+    return jsonResponse(counts);
   }
 
   return new Response('Method Not Allowed', { status: 405 });
 }
 
 async function readCounts(env) {
-  const love = Number(await env.cachecruncher_feedback.get('love') || 0);
-  const death = Number(await env.cachecruncher_feedback.get('death') || 0);
-  return { love, death };
+  const love = parseCount(await env.cachecruncher_feedback.get('love'));
+  const death = parseCount(await env.cachecruncher_feedback.get('death'));
+  const storedTotal = parseCount(await env.cachecruncher_feedback.get('total'));
+  const total = storedTotal > 0 || (love === 0 && death === 0)
+    ? storedTotal
+    : love + death;
+  return { love, death, total };
+}
+
+function parseCount(value) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
 function jsonResponse(body) {
